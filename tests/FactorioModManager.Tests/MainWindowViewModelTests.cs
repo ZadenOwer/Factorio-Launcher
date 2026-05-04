@@ -176,6 +176,40 @@ public sealed class MainWindowViewModelTests
         Assert.True(viewModel.ModLists.Single(list => list.Name == "Pack").IsActive);
     }
 
+    [Fact]
+    public async Task RefreshCommand_rescans_disk_and_revalidates_active_state()
+    {
+        using var temp = new TempDirectory();
+        var activeFolder = CreateManagedList(temp.Path, "ActivePack", "Initially active");
+        CopyListFilesToRoot(temp.Path, activeFolder);
+
+        var settingsPath = Path.Combine(temp.Path, "settings.json");
+        var appSettingsService = new AppSettingsService(settingsPath);
+        await appSettingsService.SaveAsync(new AppSettings
+        {
+            LastModsFolderPath = temp.Path,
+            ActiveModListFolderPath = activeFolder
+        });
+        var viewModel = CreateViewModel(new TestDialogService(), appSettingsService);
+
+        await viewModel.InitializeAsync();
+        Assert.Single(viewModel.ModLists);
+        Assert.Equal("ActivePack", viewModel.ActiveListName);
+
+        CreateManagedList(temp.Path, "ManualPack", "Created outside the app");
+        File.WriteAllText(Path.Combine(temp.Path, FactorioFileNames.ModListJson), """{"mods":[{"name":"base","enabled":true}]}""");
+        File.WriteAllBytes(Path.Combine(temp.Path, FactorioFileNames.ModSettingsDat), [7, 7, 7]);
+
+        await viewModel.RefreshCommand.ExecuteAsync();
+
+        Assert.Equal(2, viewModel.ModLists.Count);
+        Assert.Contains(viewModel.ModLists, list => list.Name == "ManualPack");
+        Assert.False(viewModel.HasActiveList);
+        Assert.All(viewModel.ModLists, list => Assert.False(list.IsActive));
+        var settings = await appSettingsService.LoadAsync();
+        Assert.Null(settings.ActiveModListFolderPath);
+    }
+
     private static MainWindowViewModel CreateViewModel(TestDialogService dialogService, AppSettingsService appSettingsService)
     {
         var modInfoReader = new ModInfoReader();
