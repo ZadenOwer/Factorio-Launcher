@@ -71,6 +71,39 @@ public sealed class MainWindowViewModelTests
         Assert.Single(viewModel.InstalledMods);
     }
 
+    [Fact]
+    public async Task Edit_sort_can_switch_between_name_and_active_mod_order()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(Path.Combine(temp.Path, FactorioFileNames.ModListJson), """{"mods":[]}""");
+        File.WriteAllBytes(Path.Combine(temp.Path, FactorioFileNames.ModSettingsDat), [1, 2, 3]);
+        ModScannerTests.CreateZip(Path.Combine(temp.Path, "alpha-mod_1.0.0.zip"), "alpha-mod", "Alpha Mod", "1.0.0");
+        ModScannerTests.CreateZip(Path.Combine(temp.Path, "beta-mod_1.0.0.zip"), "beta-mod", "Beta Mod", "1.0.0");
+        ModScannerTests.CreateZip(Path.Combine(temp.Path, "gamma-mod_1.0.0.zip"), "gamma-mod", "Gamma Mod", "1.0.0");
+        CreateManagedList(temp.Path, "Selection", "Selected beta", "beta-mod");
+
+        var settingsPath = Path.Combine(temp.Path, "settings.json");
+        var appSettingsService = new AppSettingsService(settingsPath);
+        await appSettingsService.SaveAsync(new AppSettings { LastModsFolderPath = temp.Path });
+        var dialogs = new TestDialogService();
+        var viewModel = CreateViewModel(dialogs, appSettingsService);
+
+        await viewModel.InitializeAsync();
+        viewModel.EditSelectedCommand.Execute(null);
+
+        Assert.True(viewModel.IsEditorSortedByName);
+        Assert.Equal(["Alpha Mod", "Beta Mod", "Gamma Mod"], viewModel.EditableMods.Select(mod => mod.Title));
+
+        viewModel.SortEditorByActiveCommand.Execute(null);
+
+        Assert.True(viewModel.IsEditorSortedByActive);
+        Assert.Equal(["Beta Mod", "Alpha Mod", "Gamma Mod"], viewModel.EditableMods.Select(mod => mod.Title));
+
+        viewModel.EditableMods.Single(mod => mod.Name == "alpha-mod").IsSelected = true;
+
+        Assert.Equal(["Alpha Mod", "Beta Mod", "Gamma Mod"], viewModel.EditableMods.Select(mod => mod.Title));
+    }
+
     private static MainWindowViewModel CreateViewModel(TestDialogService dialogService, AppSettingsService appSettingsService)
     {
         var modInfoReader = new ModInfoReader();
@@ -92,23 +125,31 @@ public sealed class MainWindowViewModelTests
             new ActiveModListDetector());
     }
 
-    private static void CreateManagedList(string root, string name, string description)
+    private static void CreateManagedList(string root, string name, string description, params string[] selectedMods)
     {
+        if (selectedMods.Length == 0)
+        {
+            selectedMods = ["space-exploration"];
+        }
+
         var folder = Path.Combine(root, name);
         Directory.CreateDirectory(folder);
-        File.WriteAllText(Path.Combine(folder, FactorioFileNames.ModListJson), """
-        {
-          "mods": [
-            { "name": "base", "enabled": true },
-            { "name": "space-exploration", "enabled": true }
-          ]
-        }
-        """);
+        var modEntries = string.Join(
+            $",{Environment.NewLine}",
+            selectedMods.Select(mod => $"    {{ \"name\": \"{mod}\", \"enabled\": true }}"));
+        File.WriteAllText(
+            Path.Combine(folder, FactorioFileNames.ModListJson),
+            $"{{{Environment.NewLine}" +
+            $"  \"mods\": [{Environment.NewLine}" +
+            $"    {{ \"name\": \"base\", \"enabled\": true }},{Environment.NewLine}" +
+            $"{modEntries}{Environment.NewLine}" +
+            $"  ]{Environment.NewLine}" +
+            $"}}{Environment.NewLine}");
         File.WriteAllBytes(Path.Combine(folder, FactorioFileNames.ModSettingsDat), [1, 2, 3]);
         new ModListMetadataService().Save(
             folder,
             description,
-            new Dictionary<string, string> { ["space-exploration"] = "0.6.128" },
+            selectedMods.ToDictionary(mod => mod, _ => "1.0.0"),
             null,
             null);
     }

@@ -35,6 +35,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     private string? _searchText;
     private string? _listSearchText;
     private string _activeTab = "Lists";
+    private string _editorSortMode = EditorSortModes.Name;
     private string _draftName = string.Empty;
     private string _draftDescription = string.Empty;
     private int _draftSelectedCount;
@@ -79,6 +80,8 @@ public sealed class MainWindowViewModel : ViewModelBase
         DeleteSelectedCommand = new AsyncRelayCommand(DeleteSelectedAsync, () => SelectedModList is not null && IsNormalMode);
         ShowListsCommand = new RelayCommand(() => ActiveTab = "Lists");
         ShowModsCommand = new RelayCommand(() => ActiveTab = "Mods");
+        SortEditorByNameCommand = new RelayCommand(() => EditorSortMode = EditorSortModes.Name);
+        SortEditorByActiveCommand = new RelayCommand(() => EditorSortMode = EditorSortModes.Active);
     }
 
     public string? ModsFolderPath
@@ -252,6 +255,27 @@ public sealed class MainWindowViewModel : ViewModelBase
     public bool IsListsTabInactive => !IsListsTabActive;
     public bool IsModsTabInactive => !IsModsTabActive;
 
+    public string EditorSortMode
+    {
+        get => _editorSortMode;
+        private set
+        {
+            if (SetProperty(ref _editorSortMode, value))
+            {
+                OnPropertyChanged(nameof(IsEditorSortedByName));
+                OnPropertyChanged(nameof(IsEditorSortedByActive));
+                OnPropertyChanged(nameof(IsEditorNotSortedByName));
+                OnPropertyChanged(nameof(IsEditorNotSortedByActive));
+                ApplyEditorFilter();
+            }
+        }
+    }
+
+    public bool IsEditorSortedByName => string.Equals(EditorSortMode, EditorSortModes.Name, StringComparison.Ordinal);
+    public bool IsEditorSortedByActive => string.Equals(EditorSortMode, EditorSortModes.Active, StringComparison.Ordinal);
+    public bool IsEditorNotSortedByName => !IsEditorSortedByName;
+    public bool IsEditorNotSortedByActive => !IsEditorSortedByActive;
+
     public string DraftName
     {
         get => _draftName;
@@ -319,6 +343,8 @@ public sealed class MainWindowViewModel : ViewModelBase
     public AsyncRelayCommand DeleteSelectedCommand { get; }
     public RelayCommand ShowListsCommand { get; }
     public RelayCommand ShowModsCommand { get; }
+    public RelayCommand SortEditorByNameCommand { get; }
+    public RelayCommand SortEditorByActiveCommand { get; }
 
     public async Task InitializeAsync()
     {
@@ -472,6 +498,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         }
 
         SearchText = string.Empty;
+        EditorSortMode = EditorSortModes.Name;
         IsEditMode = true;
         ApplyEditorFilter();
         UpdateDraftSummary();
@@ -796,7 +823,16 @@ public sealed class MainWindowViewModel : ViewModelBase
                 mod.Title.Contains(filter, StringComparison.CurrentCultureIgnoreCase) ||
                 mod.Name.Contains(filter, StringComparison.OrdinalIgnoreCase));
 
-        foreach (var mod in visible.OrderBy(mod => mod.Title, StringComparer.CurrentCultureIgnoreCase))
+        var ordered = IsEditorSortedByActive
+            ? visible
+                .OrderByDescending(mod => mod.IsSelected)
+                .ThenBy(mod => mod.Title, StringComparer.CurrentCultureIgnoreCase)
+                .ThenBy(mod => mod.Name, StringComparer.OrdinalIgnoreCase)
+            : visible
+                .OrderBy(mod => mod.Title, StringComparer.CurrentCultureIgnoreCase)
+                .ThenBy(mod => mod.Name, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var mod in ordered)
         {
             EditableMods.Add(mod);
         }
@@ -834,6 +870,10 @@ public sealed class MainWindowViewModel : ViewModelBase
         if (e.PropertyName is nameof(EditableModViewModel.IsSelected) or nameof(EditableModViewModel.SelectedVersion))
         {
             UpdateDraftSummary();
+            if (IsEditorSortedByActive && e.PropertyName == nameof(EditableModViewModel.IsSelected))
+            {
+                ApplyEditorFilter();
+            }
         }
     }
 
@@ -883,5 +923,11 @@ public sealed class MainWindowViewModel : ViewModelBase
     {
         ValidateFolder();
         return IsFolderValid && !string.IsNullOrWhiteSpace(ModsFolderPath);
+    }
+
+    private static class EditorSortModes
+    {
+        public const string Name = "Name";
+        public const string Active = "Active";
     }
 }

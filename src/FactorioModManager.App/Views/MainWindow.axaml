@@ -73,6 +73,27 @@
       <Setter Property="MinHeight" Value="32" />
       <Setter Property="CornerRadius" Value="0" />
     </Style>
+    <Style Selector="Button.segment">
+      <Setter Property="MinHeight" Value="31" />
+      <Setter Property="Padding" Value="10,4" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Background" Value="#15110D" />
+      <Setter Property="Foreground" Value="#8A7D65" />
+      <Setter Property="BorderBrush" Value="#3A342C" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="FontSize" Value="11" />
+    </Style>
+    <Style Selector="Button.segmentActive">
+      <Setter Property="MinHeight" Value="31" />
+      <Setter Property="Padding" Value="10,4" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Background" Value="#221D18" />
+      <Setter Property="Foreground" Value="#F0A455" />
+      <Setter Property="BorderBrush" Value="#D97A2C" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
     <Style Selector="Button.path">
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderThickness" Value="0" />
@@ -316,7 +337,16 @@
           </Border>
 
           <Border Grid.Row="1" BorderBrush="#221D18" BorderThickness="0,1,0,1" Padding="18,8" IsVisible="{Binding IsEditMode}">
-            <TextBox Watermark="Search mods..." Text="{Binding SearchText, Mode=TwoWay}" />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+              <TextBox Watermark="Search mods..." Text="{Binding SearchText, Mode=TwoWay}" />
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                <TextBlock Text="SORT" Classes="header" VerticalAlignment="Center" Margin="0,0,2,0" />
+                <Button Classes="segmentActive" Content="Name" Command="{Binding SortEditorByNameCommand}" IsVisible="{Binding IsEditorSortedByName}" />
+                <Button Classes="segment" Content="Name" Command="{Binding SortEditorByNameCommand}" IsVisible="{Binding IsEditorNotSortedByName}" />
+                <Button Classes="segmentActive" Content="Active" Command="{Binding SortEditorByActiveCommand}" IsVisible="{Binding IsEditorSortedByActive}" />
+                <Button Classes="segment" Content="Active" Command="{Binding SortEditorByActiveCommand}" IsVisible="{Binding IsEditorNotSortedByActive}" />
+              </StackPanel>
+            </Grid>
           </Border>
 
           <Border Grid.Row="2" BorderBrush="#221D18" BorderThickness="0,0,0,1">
