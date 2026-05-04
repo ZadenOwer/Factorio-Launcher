@@ -93,13 +93,14 @@
       <Setter Property="MinHeight" Value="28" />
       <Setter Property="Padding" Value="0" />
       <Setter Property="CornerRadius" Value="5" />
-      <Setter Property="Background" Value="#1A1814" />
-      <Setter Property="BorderBrush" Value="#3A342C" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
       <Setter Property="Foreground" Value="#E8DFCF" />
-      <Setter Property="FontSize" Value="16" />
-      <Setter Property="FontWeight" Value="SemiBold" />
       <Setter Property="HorizontalContentAlignment" Value="Center" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.iconButton:pointerover">
+      <Setter Property="Background" Value="#221D18" />
     </Style>
     <Style Selector="Button.tab">
       <Setter Property="Background" Value="Transparent" />
@@ -232,9 +233,13 @@
         </Button>
         <Button Grid.Column="4"
                 Classes="iconButton"
-                Content="&#x21BB;"
                 Command="{Binding RefreshCommand}"
-                ToolTip.Tip="Reload mods and mod lists from disk" />
+                ToolTip.Tip="Reload mods and mod lists from disk">
+          <Viewbox Width="16" Height="16">
+            <Path Fill="#E8DFCF"
+                  Data="M12,4 C9.7,4 7.7,5 6.3,6.6 L4.8,5.1 L4.8,10 L9.7,10 L7.7,8 C8.8,6.8 10.3,6 12,6 C15.3,6 18,8.7 18,12 C18,15.3 15.3,18 12,18 C9.4,18 7.2,16.3 6.4,14 L4.3,14 C5.2,17.4 8.3,20 12,20 C16.4,20 20,16.4 20,12 C20,7.6 16.4,4 12,4 Z" />
+          </Viewbox>
+        </Button>
 
         <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="0" VerticalAlignment="Center">
           <Button Classes="tabActive" Command="{Binding ShowListsCommand}" IsVisible="{Binding IsListsTabActive}">
