@@ -42,4 +42,28 @@ public sealed class ModListFileManager
 
         Directory.Delete(folderPath, recursive: true);
     }
+
+    public void ApplyRootFilesToManagedList(string modsFolderPath, string folderPath)
+    {
+        if (!ManagerWorkspacePaths.IsManagedListPath(modsFolderPath, folderPath) ||
+            !ModListDetector.IsManagedListFolder(folderPath))
+        {
+            throw new InvalidOperationException("Only recognized managed mod-list folders can be updated.");
+        }
+
+        var rootModList = Path.Combine(modsFolderPath, FactorioFileNames.ModListJson);
+        var rootModSettings = Path.Combine(modsFolderPath, FactorioFileNames.ModSettingsDat);
+        if (!File.Exists(rootModList))
+        {
+            throw new FileNotFoundException("Root mod-list.json is missing.", rootModList);
+        }
+
+        if (!File.Exists(rootModSettings))
+        {
+            throw new FileNotFoundException("Root mod-settings.dat is missing.", rootModSettings);
+        }
+
+        File.Copy(rootModList, Path.Combine(folderPath, FactorioFileNames.ModListJson), overwrite: true);
+        File.Copy(rootModSettings, Path.Combine(folderPath, FactorioFileNames.ModSettingsDat), overwrite: true);
+    }
 }

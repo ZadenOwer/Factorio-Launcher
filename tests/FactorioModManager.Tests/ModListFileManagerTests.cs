@@ -58,4 +58,39 @@ public sealed class ModListFileManagerTests
             new ModListFileManager().DeleteManagedList(temp.Path, folder));
         Assert.True(Directory.Exists(folder));
     }
+
+    [Fact]
+    public void ApplyRootFilesToManagedList_overwrites_only_managed_list_files()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(Path.Combine(temp.Path, FactorioFileNames.ModListJson), """{"mods":[{"name":"root","enabled":true}]}""");
+        File.WriteAllBytes(Path.Combine(temp.Path, FactorioFileNames.ModSettingsDat), [9, 8, 7]);
+        var folder = ManagerWorkspacePaths.GetManagedListFolder(temp.Path, "Target");
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, FactorioFileNames.ModListJson), """{"mods":[{"name":"old","enabled":true}]}""");
+        File.WriteAllBytes(Path.Combine(folder, FactorioFileNames.ModSettingsDat), [1]);
+
+        new ModListFileManager().ApplyRootFilesToManagedList(temp.Path, folder);
+
+        Assert.Equal(
+            """{"mods":[{"name":"root","enabled":true}]}""",
+            File.ReadAllText(Path.Combine(folder, FactorioFileNames.ModListJson)));
+        Assert.Equal([9, 8, 7], File.ReadAllBytes(Path.Combine(folder, FactorioFileNames.ModSettingsDat)));
+    }
+
+    [Fact]
+    public void ApplyRootFilesToManagedList_rejects_unmanaged_folder()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(Path.Combine(temp.Path, FactorioFileNames.ModListJson), """{"mods":[]}""");
+        File.WriteAllBytes(Path.Combine(temp.Path, FactorioFileNames.ModSettingsDat), [1]);
+        var folder = Path.Combine(temp.Path, "Unknown");
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, FactorioFileNames.ModListJson), """{"mods":[{"name":"old","enabled":true}]}""");
+        File.WriteAllBytes(Path.Combine(folder, FactorioFileNames.ModSettingsDat), [2]);
+
+        Assert.Throws<InvalidOperationException>(() =>
+            new ModListFileManager().ApplyRootFilesToManagedList(temp.Path, folder));
+        Assert.Equal([2], File.ReadAllBytes(Path.Combine(folder, FactorioFileNames.ModSettingsDat)));
+    }
 }

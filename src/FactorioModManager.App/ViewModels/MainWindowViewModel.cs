@@ -84,6 +84,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         CancelEditCommand = new RelayCommand(CancelEdit, () => IsEditMode);
         EditSelectedCommand = new RelayCommand(EditSelected, () => SelectedModList is not null && IsNormalMode);
         DuplicateSelectedCommand = new RelayCommand(DuplicateSelected, () => SelectedModList is not null && IsNormalMode);
+        ApplyCurrentToSelectedCommand = new AsyncRelayCommand(ApplyCurrentToSelectedAsync, () => SelectedModList is not null && IsNormalMode);
         ActivateSelectedCommand = new AsyncRelayCommand(ActivateSelectedAsync, () => CanActivateSelected);
         DeleteSelectedCommand = new AsyncRelayCommand(DeleteSelectedAsync, () => SelectedModList is not null && IsNormalMode);
         ShowListsCommand = new RelayCommand(() => ActiveTab = "Lists");
@@ -384,6 +385,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     public RelayCommand CancelEditCommand { get; }
     public RelayCommand EditSelectedCommand { get; }
     public RelayCommand DuplicateSelectedCommand { get; }
+    public AsyncRelayCommand ApplyCurrentToSelectedCommand { get; }
     public AsyncRelayCommand ActivateSelectedCommand { get; }
     public AsyncRelayCommand DeleteSelectedCommand { get; }
     public RelayCommand ShowListsCommand { get; }
@@ -801,6 +803,14 @@ public sealed class MainWindowViewModel : ViewModelBase
         }
     }
 
+    private async Task ApplyCurrentToSelectedAsync()
+    {
+        if (SelectedModList is not null)
+        {
+            await ApplyCurrentToAsync(SelectedModList);
+        }
+    }
+
     private async Task ActivateAsync(ModListItemViewModel item)
     {
         if (!EnsureWorkspace())
@@ -882,6 +892,37 @@ public sealed class MainWindowViewModel : ViewModelBase
         {
             ErrorMessage = ex.Message;
             await _dialogService.ShowErrorAsync("Rename failed", ex.Message);
+        }
+    }
+
+    private async Task ApplyCurrentToAsync(ModListItemViewModel item)
+    {
+        if (!EnsureWorkspace())
+        {
+            return;
+        }
+
+        var confirmed = await _dialogService.ConfirmAsync(
+            "Apply current files",
+            $"Overwrite {item.Name} with the current root mod-list.json and mod-settings.dat?",
+            "Apply");
+        if (!confirmed)
+        {
+            return;
+        }
+
+        try
+        {
+            _modListFileManager.ApplyRootFilesToManagedList(ModsFolderPath!, item.FolderPath);
+            StatusMessage = $"Applied current root files to {item.Name}.";
+            await RefreshAsync();
+            SelectedModList = _allModListItems.FirstOrDefault(list =>
+                string.Equals(list.Name, item.Name, StringComparison.OrdinalIgnoreCase));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            ErrorMessage = ex.Message;
+            await _dialogService.ShowErrorAsync("Apply failed", ex.Message);
         }
     }
 
@@ -1136,6 +1177,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanActivateSelected));
         EditSelectedCommand.RaiseCanExecuteChanged();
         DuplicateSelectedCommand.RaiseCanExecuteChanged();
+        ApplyCurrentToSelectedCommand.RaiseCanExecuteChanged();
         ActivateSelectedCommand.RaiseCanExecuteChanged();
         DeleteSelectedCommand.RaiseCanExecuteChanged();
     }
