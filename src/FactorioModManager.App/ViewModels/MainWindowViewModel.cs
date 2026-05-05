@@ -86,6 +86,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         DeleteSelectedCommand = new AsyncRelayCommand(DeleteSelectedAsync, () => SelectedModList is not null && IsNormalMode);
         ShowListsCommand = new RelayCommand(() => ActiveTab = "Lists");
         ShowModsCommand = new RelayCommand(() => ActiveTab = "Mods");
+        SelectActiveListCommand = new RelayCommand(SelectActiveList, () => HasActiveList);
         SortEditorByNameCommand = new RelayCommand(() => EditorSortMode = EditorSortModes.Name);
         SortEditorByActiveCommand = new RelayCommand(() => EditorSortMode = EditorSortModes.Active);
     }
@@ -364,6 +365,7 @@ public sealed class MainWindowViewModel : ViewModelBase
             if (SetProperty(ref _activeListName, value))
             {
                 OnPropertyChanged(nameof(HasActiveList));
+                SelectActiveListCommand.RaiseCanExecuteChanged();
             }
         }
     }
@@ -383,6 +385,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     public AsyncRelayCommand DeleteSelectedCommand { get; }
     public RelayCommand ShowListsCommand { get; }
     public RelayCommand ShowModsCommand { get; }
+    public RelayCommand SelectActiveListCommand { get; }
     public RelayCommand SortEditorByNameCommand { get; }
     public RelayCommand SortEditorByActiveCommand { get; }
 
@@ -715,6 +718,26 @@ public sealed class MainWindowViewModel : ViewModelBase
         FinishEditing();
         LoadSelectedMods();
         StatusMessage = "Edit cancelled.";
+    }
+
+    private void SelectActiveList()
+    {
+        var activeList = _allModListItems.FirstOrDefault(item => item.IsActive);
+        if (activeList is null)
+        {
+            return;
+        }
+
+        if (IsEditMode)
+        {
+            FinishEditing();
+        }
+
+        ListSearchText = string.Empty;
+        ActiveTab = "Lists";
+        SelectedModList = activeList;
+        LoadSelectedMods();
+        StatusMessage = $"Opened active list {activeList.Name}.";
     }
 
     private void FinishEditing()

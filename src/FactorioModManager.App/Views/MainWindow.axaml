@@ -102,6 +102,18 @@
     <Style Selector="Button.iconButton:pointerover">
       <Setter Property="Background" Value="#221D18" />
     </Style>
+    <Style Selector="Button.activeBadge">
+      <Setter Property="Background" Value="#15201A" />
+      <Setter Property="BorderBrush" Value="#2A4A30" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="5" />
+      <Setter Property="Padding" Value="9,4" />
+      <Setter Property="MinHeight" Value="0" />
+    </Style>
+    <Style Selector="Button.activeBadge:pointerover">
+      <Setter Property="Background" Value="#1A2A1E" />
+      <Setter Property="BorderBrush" Value="#3B6A42" />
+    </Style>
     <Style Selector="Button.tab">
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderThickness" Value="0" />
@@ -287,12 +299,16 @@
           </Button>
         </StackPanel>
 
-        <Border Grid.Column="9" Background="#15201A" BorderBrush="#2A4A30" BorderThickness="1" CornerRadius="5" Padding="9,4" IsVisible="{Binding HasActiveList}">
+        <Button Grid.Column="9"
+                Classes="activeBadge"
+                Command="{Binding SelectActiveListCommand}"
+                IsVisible="{Binding HasActiveList}"
+                ToolTip.Tip="Open active mod list">
           <StackPanel Orientation="Horizontal" Spacing="7">
             <Ellipse Width="7" Height="7" Fill="#5FA84A" VerticalAlignment="Center" />
             <TextBlock Text="{Binding ActiveListName}" Foreground="#5FA84A" FontWeight="SemiBold" FontSize="12" />
           </StackPanel>
-        </Border>
+        </Button>
       </Grid>
     </Border>
 

@@ -177,6 +177,36 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task SelectActiveListCommand_switches_to_lists_and_selects_active_list()
+    {
+        using var temp = new TempDirectory();
+        var activeFolder = CreateManagedList(temp.Path, "ActivePack", "Active list", "space-exploration");
+        CreateManagedList(temp.Path, "OtherPack", "Other list");
+        CopyListFilesToRoot(temp.Path, activeFolder);
+
+        var settingsPath = Path.Combine(temp.Path, "settings.json");
+        var appSettingsService = new AppSettingsService(settingsPath);
+        await appSettingsService.SaveAsync(new AppSettings
+        {
+            LastModsFolderPath = temp.Path,
+            ActiveModListFolderPath = activeFolder
+        });
+        var viewModel = CreateViewModel(new TestDialogService(), appSettingsService);
+
+        await viewModel.InitializeAsync();
+        viewModel.ListSearchText = "Other";
+        viewModel.ShowModsCommand.Execute(null);
+        viewModel.SelectedModList = viewModel.ModLists.Single(list => list.Name == "OtherPack");
+
+        viewModel.SelectActiveListCommand.Execute(null);
+
+        Assert.True(viewModel.IsListsTabActive);
+        Assert.Equal("ActivePack", viewModel.SelectedModList?.Name);
+        Assert.Equal(2, viewModel.VisibleModListCount);
+        Assert.Empty(viewModel.ListSearchText);
+    }
+
+    [Fact]
     public async Task RefreshCommand_rescans_disk_and_revalidates_active_state()
     {
         using var temp = new TempDirectory();
