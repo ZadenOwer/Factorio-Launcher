@@ -541,7 +541,7 @@ public sealed class MainWindowViewModel : ViewModelBase
             var activeFolderPath = await GetValidatedRememberedActiveFolderPathAsync(detectedModLists);
 
             _allModListItems.Clear();
-            foreach (var modList in detectedModLists)
+            foreach (var modList in ApplySavedModListOrder(detectedModLists))
             {
                 var isActive = PathsEqual(activeFolderPath, modList.FolderPath);
                 _allModListItems.Add(new ModListItemViewModel(
@@ -554,6 +554,7 @@ public sealed class MainWindowViewModel : ViewModelBase
                     DeleteAsync));
             }
 
+            await SaveCurrentModListOrderAsync();
             ActiveListName = _allModListItems.FirstOrDefault(item => item.IsActive)?.Name;
             ApplyListFilter();
 
@@ -702,6 +703,7 @@ public sealed class MainWindowViewModel : ViewModelBase
             if (!string.Equals(newName, SelectedModList.Name, StringComparison.OrdinalIgnoreCase))
             {
                 targetFolder = _modListFileManager.RenameManagedList(ModsFolderPath!, SelectedModList.FolderPath, newName);
+                await RenameSavedModListOrderEntryAsync(SelectedModList.Name, newName);
             }
 
             _modListWriter.Write(targetFolder, selectedNames, availableNames);
@@ -756,6 +758,7 @@ public sealed class MainWindowViewModel : ViewModelBase
             _modSettingsManager.CopySettingsToModList(settingsSourcePath, createdFolder);
             _modListWriter.Write(createdFolder, selectedNames, availableNames);
             _metadataService.Save(createdFolder, DraftDescription, selectedVersions, null, null);
+            await AddSavedModListOrderEntryAsync(createdName);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -917,6 +920,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         try
         {
             _modListFileManager.RenameManagedList(ModsFolderPath!, item.FolderPath, newName.Trim());
+            await RenameSavedModListOrderEntryAsync(item.Name, newName.Trim());
             StatusMessage = $"Renamed {item.Name} to {newName.Trim()}.";
             await RefreshAsync();
             SelectedModList = _allModListItems.FirstOrDefault(list =>
@@ -979,6 +983,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         try
         {
             _modListFileManager.DeleteManagedList(ModsFolderPath!, item.FolderPath);
+            await RemoveSavedModListOrderEntryAsync(item.Name);
             StatusMessage = $"Deleted {item.Name}.";
             await RefreshAsync();
         }
@@ -1075,7 +1080,7 @@ public sealed class MainWindowViewModel : ViewModelBase
                 list.Name.Contains(filter, StringComparison.CurrentCultureIgnoreCase) ||
                 list.Description.Contains(filter, StringComparison.CurrentCultureIgnoreCase));
 
-        foreach (var list in visible.OrderBy(list => list.Name, StringComparer.CurrentCultureIgnoreCase))
+        foreach (var list in visible)
         {
             ModLists.Add(list);
         }
@@ -1090,6 +1095,142 @@ public sealed class MainWindowViewModel : ViewModelBase
         {
             InstalledMods.Add(new InstalledModViewModel(mod));
         }
+    }
+
+    public async Task MoveModListAsync(ModListItemViewModel source, ModListItemViewModel target, bool placeAfterTarget)
+    {
+        if (source == target || !IsNormalMode)
+        {
+            return;
+        }
+
+        var sourceIndex = _allModListItems.IndexOf(source);
+        var targetIndex = _allModListItems.IndexOf(target);
+        if (sourceIndex < 0 || targetIndex < 0)
+        {
+            return;
+        }
+
+        _allModListItems.RemoveAt(sourceIndex);
+        targetIndex = _allModListItems.IndexOf(target);
+        var insertIndex = placeAfterTarget ? targetIndex + 1 : targetIndex;
+        insertIndex = Math.Clamp(insertIndex, 0, _allModListItems.Count);
+        _allModListItems.Insert(insertIndex, source);
+
+        ApplyListFilter();
+        SelectedModList = source;
+        await SaveCurrentModListOrderAsync();
+        StatusMessage = $"Moved {source.Name}.";
+    }
+
+    private IReadOnlyList<ModList> ApplySavedModListOrder(IReadOnlyList<ModList> modLists)
+    {
+        var savedOrder = GetSavedModListOrder();
+        if (savedOrder.Count == 0)
+        {
+            return modLists
+                .OrderBy(list => list.Name, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+        }
+
+        var positions = savedOrder
+            .Select((name, index) => new { name, index })
+            .GroupBy(item => item.name, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First().index, StringComparer.OrdinalIgnoreCase);
+
+        return modLists
+            .OrderBy(list => positions.TryGetValue(list.Name, out var position) ? position : int.MaxValue)
+            .ThenBy(list => positions.ContainsKey(list.Name) ? string.Empty : list.Name, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+    }
+
+    private IReadOnlyList<string> GetSavedModListOrder()
+    {
+        var key = GetSettingsFolderKey(ModsFolderPath);
+        if (key is null || !_settings.ModListOrders.TryGetValue(key, out var order))
+        {
+            return [];
+        }
+
+        return order
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private async Task SaveCurrentModListOrderAsync()
+    {
+        var key = GetSettingsFolderKey(ModsFolderPath);
+        if (key is null)
+        {
+            return;
+        }
+
+        _settings.LastModsFolderPath = ModsFolderPath;
+        _settings.ModListOrders[key] = _allModListItems
+            .Select(item => item.Name)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        await _appSettingsService.SaveAsync(_settings);
+    }
+
+    private async Task AddSavedModListOrderEntryAsync(string name)
+    {
+        var key = GetSettingsFolderKey(ModsFolderPath);
+        if (key is null)
+        {
+            return;
+        }
+
+        var order = GetSavedModListOrder().ToList();
+        if (order.Count == 0)
+        {
+            order.AddRange(_allModListItems.Select(item => item.Name));
+        }
+
+        order.RemoveAll(existing => string.Equals(existing, name, StringComparison.OrdinalIgnoreCase));
+        order.Add(name);
+        _settings.ModListOrders[key] = order;
+        await _appSettingsService.SaveAsync(_settings);
+    }
+
+    private async Task RenameSavedModListOrderEntryAsync(string oldName, string newName)
+    {
+        var key = GetSettingsFolderKey(ModsFolderPath);
+        if (key is null)
+        {
+            return;
+        }
+
+        var order = GetSavedModListOrder().ToList();
+        var index = order.FindIndex(name => string.Equals(name, oldName, StringComparison.OrdinalIgnoreCase));
+        order.RemoveAll(name => string.Equals(name, newName, StringComparison.OrdinalIgnoreCase));
+
+        if (index >= 0)
+        {
+            order[index] = newName;
+        }
+        else
+        {
+            order.Add(newName);
+        }
+
+        _settings.ModListOrders[key] = order;
+        await _appSettingsService.SaveAsync(_settings);
+    }
+
+    private async Task RemoveSavedModListOrderEntryAsync(string name)
+    {
+        var key = GetSettingsFolderKey(ModsFolderPath);
+        if (key is null)
+        {
+            return;
+        }
+
+        var order = GetSavedModListOrder().ToList();
+        order.RemoveAll(existing => string.Equals(existing, name, StringComparison.OrdinalIgnoreCase));
+        _settings.ModListOrders[key] = order;
+        await _appSettingsService.SaveAsync(_settings);
     }
 
     private void EditableModChanged(object? sender, PropertyChangedEventArgs e)
@@ -1244,6 +1385,23 @@ public sealed class MainWindowViewModel : ViewModelBase
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
         {
             return false;
+        }
+    }
+
+    private static string? GetSettingsFolderKey(string? folderPath)
+    {
+        if (string.IsNullOrWhiteSpace(folderPath))
+        {
+            return null;
+        }
+
+        try
+        {
+            return Path.TrimEndingDirectorySeparator(Path.GetFullPath(folderPath));
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return folderPath.Trim();
         }
     }
 }

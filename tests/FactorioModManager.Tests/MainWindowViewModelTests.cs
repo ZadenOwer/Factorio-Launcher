@@ -105,6 +105,35 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task Manual_mod_list_order_is_saved_and_restored_after_reopen()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(Path.Combine(temp.Path, FactorioFileNames.ModListJson), """{"mods":[]}""");
+        File.WriteAllBytes(Path.Combine(temp.Path, FactorioFileNames.ModSettingsDat), [1, 2, 3]);
+        CreateManagedList(temp.Path, "Alpha", "First");
+        CreateManagedList(temp.Path, "Beta", "Second");
+        CreateManagedList(temp.Path, "Gamma", "Third");
+
+        var settingsPath = Path.Combine(temp.Path, "settings.json");
+        var appSettingsService = new AppSettingsService(settingsPath);
+        await appSettingsService.SaveAsync(new AppSettings { LastModsFolderPath = temp.Path });
+        var viewModel = CreateViewModel(new TestDialogService(), appSettingsService);
+
+        await viewModel.InitializeAsync();
+        await viewModel.MoveModListAsync(
+            viewModel.ModLists.Single(list => list.Name == "Gamma"),
+            viewModel.ModLists.Single(list => list.Name == "Alpha"),
+            placeAfterTarget: false);
+
+        Assert.Equal(["Gamma", "Alpha", "Beta"], viewModel.ModLists.Select(list => list.Name));
+
+        var reopenedViewModel = CreateViewModel(new TestDialogService(), appSettingsService);
+        await reopenedViewModel.InitializeAsync();
+
+        Assert.Equal(["Gamma", "Alpha", "Beta"], reopenedViewModel.ModLists.Select(list => list.Name));
+    }
+
+    [Fact]
     public async Task DuplicateSelectedCommand_creates_new_list_without_overwriting_source()
     {
         using var temp = new TempDirectory();

@@ -34,7 +34,9 @@ public sealed class AppSettingsService
         try
         {
             await using var stream = File.OpenRead(_settingsPath);
-            return await JsonSerializer.DeserializeAsync<AppSettings>(stream) ?? new AppSettings();
+            var settings = await JsonSerializer.DeserializeAsync<AppSettings>(stream) ?? new AppSettings();
+            settings.ModListOrders ??= new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+            return settings;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
