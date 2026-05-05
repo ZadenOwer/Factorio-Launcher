@@ -12,6 +12,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     private readonly AppSettingsService _appSettingsService;
     private readonly FolderValidator _folderValidator;
     private readonly FactorioInstallLocator _factorioInstallLocator;
+    private readonly IFactorioGameLauncher _factorioGameLauncher;
     private readonly ModScanner _modScanner;
     private readonly ModListDetector _modListDetector;
     private readonly ModListWriter _modListWriter;
@@ -51,6 +52,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         AppSettingsService appSettingsService,
         FolderValidator folderValidator,
         FactorioInstallLocator factorioInstallLocator,
+        IFactorioGameLauncher factorioGameLauncher,
         ModScanner modScanner,
         ModListDetector modListDetector,
         ModListWriter modListWriter,
@@ -66,6 +68,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         _appSettingsService = appSettingsService;
         _folderValidator = folderValidator;
         _factorioInstallLocator = factorioInstallLocator;
+        _factorioGameLauncher = factorioGameLauncher;
         _modScanner = modScanner;
         _modListDetector = modListDetector;
         _modListWriter = modListWriter;
@@ -78,6 +81,7 @@ public sealed class MainWindowViewModel : ViewModelBase
 
         BrowseFolderCommand = new AsyncRelayCommand(BrowseFolderAsync);
         BrowseInstallFolderCommand = new AsyncRelayCommand(BrowseInstallFolderAsync);
+        LaunchFactorioCommand = new AsyncRelayCommand(LaunchFactorioAsync, () => CanLaunchFactorio);
         RefreshCommand = new AsyncRelayCommand(RefreshAsync, () => IsFolderValid);
         CreateModListCommand = new RelayCommand(StartCreateDraft, () => IsFolderValid && IsNormalMode);
         SaveEditCommand = new AsyncRelayCommand(SaveEditAsync, () => IsEditMode);
@@ -136,6 +140,9 @@ public sealed class MainWindowViewModel : ViewModelBase
             {
                 OnPropertyChanged(nameof(FactorioInstallFolderDisplay));
                 OnPropertyChanged(nameof(FactorioInstallFolderCompact));
+                OnPropertyChanged(nameof(CanLaunchFactorio));
+                OnPropertyChanged(nameof(LaunchFactorioToolTip));
+                LaunchFactorioCommand.RaiseCanExecuteChanged();
             }
         }
     }
@@ -159,6 +166,12 @@ public sealed class MainWindowViewModel : ViewModelBase
             return string.Join("/", parts);
         }
     }
+
+    public bool CanLaunchFactorio => _factorioGameLauncher.CanLaunch(FactorioInstallFolderPath);
+
+    public string LaunchFactorioToolTip => CanLaunchFactorio
+        ? "Start Factorio"
+        : "Factorio executable was not found in the selected installation folder.";
 
     public string FolderStatus
     {
@@ -379,6 +392,7 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     public AsyncRelayCommand BrowseFolderCommand { get; }
     public AsyncRelayCommand BrowseInstallFolderCommand { get; }
+    public AsyncRelayCommand LaunchFactorioCommand { get; }
     public AsyncRelayCommand RefreshCommand { get; }
     public RelayCommand CreateModListCommand { get; }
     public AsyncRelayCommand SaveEditCommand { get; }
@@ -451,6 +465,26 @@ public sealed class MainWindowViewModel : ViewModelBase
         if (IsFolderValid)
         {
             await RefreshAsync();
+        }
+    }
+
+    private async Task LaunchFactorioAsync()
+    {
+        if (string.IsNullOrWhiteSpace(FactorioInstallFolderPath))
+        {
+            await _dialogService.ShowErrorAsync("Launch failed", "Select a Factorio installation folder before starting the game.");
+            return;
+        }
+
+        try
+        {
+            _factorioGameLauncher.Launch(FactorioInstallFolderPath);
+            StatusMessage = "Started Factorio.";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            ErrorMessage = ex.Message;
+            await _dialogService.ShowErrorAsync("Launch failed", ex.Message);
         }
     }
 

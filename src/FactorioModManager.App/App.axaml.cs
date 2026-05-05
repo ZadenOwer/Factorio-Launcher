@@ -30,6 +30,7 @@ public sealed partial class App : Application
                 appSettingsService,
                 new FolderValidator(),
                 new FactorioInstallLocator(),
+                new FactorioGameLauncher(),
                 new ModScanner(modInfoReader),
                 new ModListDetector(modListReader, modListMetadataService),
                 new ModListWriter(),

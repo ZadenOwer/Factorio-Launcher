@@ -418,10 +418,64 @@ public sealed class MainWindowViewModelTests
         Assert.Null(viewModel.FactorioInstallFolderPath);
     }
 
+    [Fact]
+    public async Task LaunchFactorioCommand_starts_game_from_known_install_folder()
+    {
+        using var modsTemp = new TempDirectory();
+        using var installTemp = new TempDirectory();
+        File.WriteAllText(Path.Combine(modsTemp.Path, FactorioFileNames.ModListJson), """{"mods":[]}""");
+        File.WriteAllBytes(Path.Combine(modsTemp.Path, FactorioFileNames.ModSettingsDat), [1, 2, 3]);
+        Directory.CreateDirectory(Path.Combine(installTemp.Path, "data"));
+
+        var settingsPath = Path.Combine(modsTemp.Path, "settings.json");
+        var appSettingsService = new AppSettingsService(settingsPath);
+        await appSettingsService.SaveAsync(new AppSettings
+        {
+            LastModsFolderPath = modsTemp.Path,
+            FactorioInstallFolderPath = installTemp.Path
+        });
+        var launcher = new FakeFactorioGameLauncher { CanLaunchResult = true };
+        var viewModel = CreateViewModel(new TestDialogService(), appSettingsService, factorioGameLauncher: launcher);
+
+        await viewModel.InitializeAsync();
+        Assert.True(viewModel.CanLaunchFactorio);
+        Assert.True(viewModel.LaunchFactorioCommand.CanExecute(null));
+
+        await viewModel.LaunchFactorioCommand.ExecuteAsync();
+
+        Assert.Equal(installTemp.Path, launcher.LaunchedInstallFolderPath);
+        Assert.Equal("Started Factorio.", viewModel.StatusMessage);
+    }
+
+    [Fact]
+    public async Task LaunchFactorioCommand_is_disabled_without_executable()
+    {
+        using var modsTemp = new TempDirectory();
+        using var installTemp = new TempDirectory();
+        File.WriteAllText(Path.Combine(modsTemp.Path, FactorioFileNames.ModListJson), """{"mods":[]}""");
+        File.WriteAllBytes(Path.Combine(modsTemp.Path, FactorioFileNames.ModSettingsDat), [1, 2, 3]);
+        Directory.CreateDirectory(Path.Combine(installTemp.Path, "data"));
+
+        var settingsPath = Path.Combine(modsTemp.Path, "settings.json");
+        var appSettingsService = new AppSettingsService(settingsPath);
+        await appSettingsService.SaveAsync(new AppSettings
+        {
+            LastModsFolderPath = modsTemp.Path,
+            FactorioInstallFolderPath = installTemp.Path
+        });
+        var viewModel = CreateViewModel(new TestDialogService(), appSettingsService, factorioGameLauncher: new FakeFactorioGameLauncher());
+
+        await viewModel.InitializeAsync();
+
+        Assert.False(viewModel.CanLaunchFactorio);
+        Assert.False(viewModel.LaunchFactorioCommand.CanExecute(null));
+    }
+
     private static MainWindowViewModel CreateViewModel(
         TestDialogService dialogService,
         AppSettingsService appSettingsService,
-        FactorioInstallLocator? factorioInstallLocator = null)
+        FactorioInstallLocator? factorioInstallLocator = null,
+        IFactorioGameLauncher? factorioGameLauncher = null)
     {
         var modInfoReader = new ModInfoReader();
         var modListReader = new ModListReader();
@@ -431,6 +485,7 @@ public sealed class MainWindowViewModelTests
             appSettingsService,
             new FolderValidator(),
             factorioInstallLocator ?? new FactorioInstallLocator([], []),
+            factorioGameLauncher ?? new FakeFactorioGameLauncher(),
             new ModScanner(modInfoReader),
             new ModListDetector(modListReader, metadataService),
             new ModListWriter(),
@@ -441,6 +496,27 @@ public sealed class MainWindowViewModelTests
             new ModListFileManager(),
             new NameValidator(),
             new ActiveModListDetector());
+    }
+
+    private sealed class FakeFactorioGameLauncher : IFactorioGameLauncher
+    {
+        public bool CanLaunchResult { get; set; }
+        public string? LaunchedInstallFolderPath { get; private set; }
+
+        public bool CanLaunch(string? installFolderPath)
+        {
+            return CanLaunchResult && !string.IsNullOrWhiteSpace(installFolderPath);
+        }
+
+        public string? GetExecutablePath(string? installFolderPath)
+        {
+            return CanLaunch(installFolderPath) ? Path.Combine(installFolderPath!, "bin", "x64", "factorio") : null;
+        }
+
+        public void Launch(string installFolderPath)
+        {
+            LaunchedInstallFolderPath = installFolderPath;
+        }
     }
 
     private static string CreateManagedList(string root, string name, string description, params string[] selectedMods)
