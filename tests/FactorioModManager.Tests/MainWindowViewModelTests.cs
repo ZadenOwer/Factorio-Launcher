@@ -260,7 +260,57 @@ public sealed class MainWindowViewModelTests
         Assert.Contains(viewModel.InstalledMods, mod => mod.Name == "space-age");
     }
 
-    private static MainWindowViewModel CreateViewModel(TestDialogService dialogService, AppSettingsService appSettingsService)
+    [Fact]
+    public async Task InitializeAsync_auto_detects_factorio_install_folder_when_saved_path_is_missing()
+    {
+        using var modsTemp = new TempDirectory();
+        using var installTemp = new TempDirectory();
+        File.WriteAllText(Path.Combine(modsTemp.Path, FactorioFileNames.ModListJson), """{"mods":[]}""");
+        File.WriteAllBytes(Path.Combine(modsTemp.Path, FactorioFileNames.ModSettingsDat), [1, 2, 3]);
+        ModScannerTests.CreateUnpackedMod(Path.Combine(installTemp.Path, "data"), "elevated-rails", "elevated-rails", "Elevated Rails", "2.0.0");
+
+        var settingsPath = Path.Combine(modsTemp.Path, "settings.json");
+        var appSettingsService = new AppSettingsService(settingsPath);
+        await appSettingsService.SaveAsync(new AppSettings { LastModsFolderPath = modsTemp.Path });
+        var locator = new FactorioInstallLocator([installTemp.Path], []);
+        var viewModel = CreateViewModel(new TestDialogService(), appSettingsService, locator);
+
+        await viewModel.InitializeAsync();
+
+        var settings = await appSettingsService.LoadAsync();
+        Assert.Equal(installTemp.Path, settings.FactorioInstallFolderPath);
+        Assert.Equal(installTemp.Path, viewModel.FactorioInstallFolderPath);
+        Assert.Contains(viewModel.InstalledMods, mod => mod.Name == "elevated-rails");
+    }
+
+    [Fact]
+    public async Task RefreshCommand_clears_invalid_saved_install_folder_when_no_detection_matches()
+    {
+        using var modsTemp = new TempDirectory();
+        using var invalidInstallTemp = new TempDirectory();
+        File.WriteAllText(Path.Combine(modsTemp.Path, FactorioFileNames.ModListJson), """{"mods":[]}""");
+        File.WriteAllBytes(Path.Combine(modsTemp.Path, FactorioFileNames.ModSettingsDat), [1, 2, 3]);
+
+        var settingsPath = Path.Combine(modsTemp.Path, "settings.json");
+        var appSettingsService = new AppSettingsService(settingsPath);
+        await appSettingsService.SaveAsync(new AppSettings
+        {
+            LastModsFolderPath = modsTemp.Path,
+            FactorioInstallFolderPath = invalidInstallTemp.Path
+        });
+        var viewModel = CreateViewModel(new TestDialogService(), appSettingsService, new FactorioInstallLocator([], []));
+
+        await viewModel.InitializeAsync();
+
+        var settings = await appSettingsService.LoadAsync();
+        Assert.Null(settings.FactorioInstallFolderPath);
+        Assert.Null(viewModel.FactorioInstallFolderPath);
+    }
+
+    private static MainWindowViewModel CreateViewModel(
+        TestDialogService dialogService,
+        AppSettingsService appSettingsService,
+        FactorioInstallLocator? factorioInstallLocator = null)
     {
         var modInfoReader = new ModInfoReader();
         var modListReader = new ModListReader();
@@ -269,6 +319,7 @@ public sealed class MainWindowViewModelTests
             dialogService,
             appSettingsService,
             new FolderValidator(),
+            factorioInstallLocator ?? new FactorioInstallLocator([], []),
             new ModScanner(modInfoReader),
             new ModListDetector(modListReader, metadataService),
             new ModListWriter(),

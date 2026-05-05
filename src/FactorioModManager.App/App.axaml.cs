@@ -29,6 +29,7 @@ public sealed partial class App : Application
                 dialogService,
                 appSettingsService,
                 new FolderValidator(),
+                new FactorioInstallLocator(),
                 new ModScanner(modInfoReader),
                 new ModListDetector(modListReader, modListMetadataService),
                 new ModListWriter(),

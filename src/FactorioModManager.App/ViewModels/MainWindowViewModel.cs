@@ -11,6 +11,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     private readonly IDialogService _dialogService;
     private readonly AppSettingsService _appSettingsService;
     private readonly FolderValidator _folderValidator;
+    private readonly FactorioInstallLocator _factorioInstallLocator;
     private readonly ModScanner _modScanner;
     private readonly ModListDetector _modListDetector;
     private readonly ModListWriter _modListWriter;
@@ -48,6 +49,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         IDialogService dialogService,
         AppSettingsService appSettingsService,
         FolderValidator folderValidator,
+        FactorioInstallLocator factorioInstallLocator,
         ModScanner modScanner,
         ModListDetector modListDetector,
         ModListWriter modListWriter,
@@ -62,6 +64,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         _dialogService = dialogService;
         _appSettingsService = appSettingsService;
         _folderValidator = folderValidator;
+        _factorioInstallLocator = factorioInstallLocator;
         _modScanner = modScanner;
         _modListDetector = modListDetector;
         _modListWriter = modListWriter;
@@ -389,6 +392,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         ModsFolderPath = _settings.LastModsFolderPath;
         FactorioInstallFolderPath = _settings.FactorioInstallFolderPath;
         ValidateFolder();
+        await AutoDetectFactorioInstallFolderAsync();
 
         if (IsFolderValid)
         {
@@ -442,6 +446,20 @@ public sealed class MainWindowViewModel : ViewModelBase
         }
     }
 
+    private async Task AutoDetectFactorioInstallFolderAsync()
+    {
+        var detectedFolderPath = _factorioInstallLocator.Locate(FactorioInstallFolderPath, ModsFolderPath);
+        if ((string.IsNullOrWhiteSpace(detectedFolderPath) && string.IsNullOrWhiteSpace(FactorioInstallFolderPath)) ||
+            PathsEqual(detectedFolderPath, FactorioInstallFolderPath))
+        {
+            return;
+        }
+
+        FactorioInstallFolderPath = detectedFolderPath;
+        _settings.FactorioInstallFolderPath = detectedFolderPath;
+        await _appSettingsService.SaveAsync(_settings);
+    }
+
     private void ValidateFolder()
     {
         var result = _folderValidator.Validate(ModsFolderPath);
@@ -472,6 +490,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         try
         {
             var previousSelection = SelectedModList?.Name;
+            await AutoDetectFactorioInstallFolderAsync();
             _availableMods.Clear();
             _availableMods.AddRange(_modScanner.Scan(ModsFolderPath, FactorioInstallFolderPath));
             LoadInstalledMods();
