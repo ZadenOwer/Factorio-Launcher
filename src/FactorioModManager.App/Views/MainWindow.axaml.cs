@@ -1,13 +1,16 @@
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using FactorioModManager.App.ViewModels;
 
 namespace FactorioModManager.App.Views;
 
 public sealed partial class MainWindow : Window
 {
-    private static readonly DataFormat<string> ModListDragFormat =
-        DataFormat.CreateStringApplicationFormat("factorio-mod-list");
+    private const string ModListRowTag = "ModListRow";
+    private const double DragStartDistance = 4;
+
     private ModListItemViewModel? _modListDragSource;
     private Avalonia.Point? _modListDragStartPoint;
     private bool _isModListDragActive;
@@ -15,6 +18,21 @@ public sealed partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        ModListsBox.AddHandler(
+            InputElement.PointerMovedEvent,
+            ModListsBox_PointerMoved,
+            RoutingStrategies.Bubble,
+            handledEventsToo: true);
+        ModListsBox.AddHandler(
+            InputElement.PointerReleasedEvent,
+            ModListsBox_PointerReleased,
+            RoutingStrategies.Bubble,
+            handledEventsToo: true);
+        ModListsBox.AddHandler(
+            InputElement.PointerCaptureLostEvent,
+            ModListsBox_PointerCaptureLost,
+            RoutingStrategies.Bubble,
+            handledEventsToo: true);
     }
 
     private void ModListItem_PointerPressed(object? sender, PointerPressedEventArgs e)
@@ -27,79 +45,92 @@ public sealed partial class MainWindow : Window
         }
 
         _modListDragSource = item;
-        _modListDragStartPoint = e.GetPosition(control);
+        _modListDragStartPoint = e.GetPosition(ModListsBox);
+        _isModListDragActive = false;
     }
 
-    private async void ModListItem_PointerMoved(object? sender, PointerEventArgs e)
+    private void ModListsBox_PointerMoved(object? sender, PointerEventArgs e)
     {
-        if (_isModListDragActive ||
-            _modListDragSource is null ||
-            _modListDragStartPoint is null ||
-            sender is not Control control)
+        if (_modListDragSource is null || _modListDragStartPoint is null)
         {
             return;
         }
 
-        if (!e.GetCurrentPoint(control).Properties.IsLeftButtonPressed)
+        if (!e.GetCurrentPoint(ModListsBox).Properties.IsLeftButtonPressed)
         {
-            ClearModListDragState();
+            ClearModListDragState(e.Pointer);
             return;
         }
 
-        var currentPoint = e.GetPosition(control);
-        if (Math.Abs(currentPoint.X - _modListDragStartPoint.Value.X) < 4 &&
-            Math.Abs(currentPoint.Y - _modListDragStartPoint.Value.Y) < 4)
+        var currentPoint = e.GetPosition(ModListsBox);
+        if (Math.Abs(currentPoint.X - _modListDragStartPoint.Value.X) < DragStartDistance &&
+            Math.Abs(currentPoint.Y - _modListDragStartPoint.Value.Y) < DragStartDistance)
         {
             return;
         }
 
         _isModListDragActive = true;
-        var data = new DataTransfer();
-        data.Add(DataTransferItem.Create(ModListDragFormat, _modListDragSource.Name));
+        e.Pointer.Capture(ModListsBox);
+        e.Handled = true;
+    }
 
+    private async void ModListsBox_PointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
         try
         {
-            await DragDrop.DoDragDropAsync(e, data, DragDropEffects.Move);
+            if (!_isModListDragActive ||
+                _modListDragSource is null ||
+                DataContext is not MainWindowViewModel viewModel)
+            {
+                return;
+            }
+
+            var pointerPosition = e.GetPosition(this);
+            var target = FindModListRowAt(pointerPosition, out var targetControl);
+            if (target is null || target == _modListDragSource || targetControl is null)
+            {
+                return;
+            }
+
+            var targetPoint = e.GetPosition(targetControl);
+            var placeAfterTarget = targetPoint.Y > targetControl.Bounds.Height / 2;
+            await viewModel.MoveModListAsync(_modListDragSource, target, placeAfterTarget);
+            e.Handled = true;
         }
         finally
         {
-            ClearModListDragState();
+            ClearModListDragState(e.Pointer);
         }
     }
 
-    private void ModListItem_DragOver(object? sender, DragEventArgs e)
+    private void ModListsBox_PointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
     {
-        e.DragEffects = CanDropModList(sender, e) ? DragDropEffects.Move : DragDropEffects.None;
-        e.Handled = true;
+        ClearModListDragState();
     }
 
-    private async void ModListItem_Drop(object? sender, DragEventArgs e)
+    private ModListItemViewModel? FindModListRowAt(Avalonia.Point pointerPosition, out Control? targetControl)
     {
-        if (!CanDropModList(sender, e) ||
-            sender is not Control targetControl ||
-            targetControl.DataContext is not ModListItemViewModel target ||
-            _modListDragSource is null ||
-            DataContext is not MainWindowViewModel viewModel)
+        targetControl = null;
+        if (this.InputHitTest(pointerPosition) is not Avalonia.Visual hit)
         {
-            return;
+            return null;
         }
 
-        var placeAfterTarget = e.GetPosition(targetControl).Y > targetControl.Bounds.Height / 2;
-        await viewModel.MoveModListAsync(_modListDragSource, target, placeAfterTarget);
-        e.Handled = true;
+        foreach (var visual in hit.GetSelfAndVisualAncestors())
+        {
+            if (visual is Control { Tag: ModListRowTag, DataContext: ModListItemViewModel item } control)
+            {
+                targetControl = control;
+                return item;
+            }
+        }
+
+        return null;
     }
 
-    private bool CanDropModList(object? sender, DragEventArgs e)
+    private void ClearModListDragState(IPointer? pointer = null)
     {
-        return sender is Control control &&
-            control.DataContext is ModListItemViewModel target &&
-            _modListDragSource is not null &&
-            _modListDragSource != target &&
-            e.DataTransfer.Contains(ModListDragFormat);
-    }
-
-    private void ClearModListDragState()
-    {
+        pointer?.Capture(null);
         _modListDragSource = null;
         _modListDragStartPoint = null;
         _isModListDragActive = false;
