@@ -4,6 +4,8 @@ namespace FactorioModManager.App.ViewModels;
 
 public sealed class ModListItemViewModel : ViewModelBase
 {
+    private bool _isBeingDragged;
+
     public ModListItemViewModel(
         ModList modList,
         bool isActive,
@@ -35,6 +37,20 @@ public sealed class ModListItemViewModel : ViewModelBase
         ? "never activated"
         : $"last activated {ModList.LastActivatedUtc.Value.LocalDateTime:g}";
     public string SummaryLabel => $"{CountLabel} - {SelectedSizeLabel} - {LastPlayedLabel}";
+
+    public bool IsBeingDragged
+    {
+        get => _isBeingDragged;
+        set
+        {
+            if (SetProperty(ref _isBeingDragged, value))
+            {
+                OnPropertyChanged(nameof(RowOpacity));
+            }
+        }
+    }
+
+    public double RowOpacity => _isBeingDragged ? 0.18 : 1.0;
 
     public AsyncRelayCommand ActivateCommand { get; }
     public RelayCommand EditCommand { get; }

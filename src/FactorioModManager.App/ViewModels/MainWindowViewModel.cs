@@ -1097,6 +1097,51 @@ public sealed class MainWindowViewModel : ViewModelBase
         }
     }
 
+    public bool CanLiveReorder => IsNormalMode && string.IsNullOrWhiteSpace(_listSearchText);
+
+    public bool TryBeginDrag(ModListItemViewModel source)
+    {
+        return CanLiveReorder && _allModListItems.Contains(source);
+    }
+
+    public void UpdateDragPosition(ModListItemViewModel source, int newIndex)
+    {
+        if (!CanLiveReorder)
+        {
+            return;
+        }
+
+        var visibleIndex = ModLists.IndexOf(source);
+        if (visibleIndex < 0)
+        {
+            return;
+        }
+
+        newIndex = Math.Clamp(newIndex, 0, ModLists.Count - 1);
+        if (newIndex == visibleIndex)
+        {
+            return;
+        }
+
+        ModLists.Move(visibleIndex, newIndex);
+
+        var allIndex = _allModListItems.IndexOf(source);
+        if (allIndex < 0)
+        {
+            return;
+        }
+
+        _allModListItems.RemoveAt(allIndex);
+        _allModListItems.Insert(Math.Clamp(newIndex, 0, _allModListItems.Count), source);
+    }
+
+    public async Task EndDragAsync(ModListItemViewModel source)
+    {
+        SelectedModList = source;
+        StatusMessage = $"Moved {source.Name}.";
+        await SaveCurrentModListOrderAsync();
+    }
+
     public async Task MoveModListAsync(ModListItemViewModel source, ModListItemViewModel target, bool placeAfterTarget)
     {
         if (source == target || !IsNormalMode)

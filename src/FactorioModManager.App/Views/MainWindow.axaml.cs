@@ -1,18 +1,19 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.VisualTree;
+using Avalonia.Media.Imaging;
 using FactorioModManager.App.ViewModels;
 
 namespace FactorioModManager.App.Views;
 
 public sealed partial class MainWindow : Window
 {
-    private const string ModListRowTag = "ModListRow";
     private const double DragStartDistance = 4;
 
     private ModListItemViewModel? _modListDragSource;
     private Avalonia.Point? _modListDragStartPoint;
+    private Avalonia.Point _modListDragGhostOffset;
     private bool _isModListDragActive;
 
     public MainWindow()
@@ -21,12 +22,12 @@ public sealed partial class MainWindow : Window
         ModListsBox.AddHandler(
             InputElement.PointerMovedEvent,
             ModListsBox_PointerMoved,
-            RoutingStrategies.Bubble,
+            RoutingStrategies.Tunnel | RoutingStrategies.Bubble,
             handledEventsToo: true);
         ModListsBox.AddHandler(
             InputElement.PointerReleasedEvent,
             ModListsBox_PointerReleased,
-            RoutingStrategies.Bubble,
+            RoutingStrategies.Tunnel | RoutingStrategies.Bubble,
             handledEventsToo: true);
         ModListsBox.AddHandler(
             InputElement.PointerCaptureLostEvent,
@@ -39,13 +40,16 @@ public sealed partial class MainWindow : Window
     {
         if (sender is not Control control ||
             control.DataContext is not ModListItemViewModel item ||
-            !e.GetCurrentPoint(control).Properties.IsLeftButtonPressed)
+            DataContext is not MainWindowViewModel viewModel ||
+            !e.GetCurrentPoint(control).Properties.IsLeftButtonPressed ||
+            !viewModel.CanLiveReorder)
         {
             return;
         }
 
         _modListDragSource = item;
         _modListDragStartPoint = e.GetPosition(ModListsBox);
+        _modListDragGhostOffset = e.GetPosition(control);
         _isModListDragActive = false;
     }
 
@@ -58,81 +62,156 @@ public sealed partial class MainWindow : Window
 
         if (!e.GetCurrentPoint(ModListsBox).Properties.IsLeftButtonPressed)
         {
-            ClearModListDragState(e.Pointer);
+            _ = EndModListDragAsync(e.Pointer, commit: false);
             return;
         }
 
-        var currentPoint = e.GetPosition(ModListsBox);
-        if (Math.Abs(currentPoint.X - _modListDragStartPoint.Value.X) < DragStartDistance &&
-            Math.Abs(currentPoint.Y - _modListDragStartPoint.Value.Y) < DragStartDistance)
+        var listPoint = e.GetPosition(ModListsBox);
+        if (!_isModListDragActive)
+        {
+            if (Math.Abs(listPoint.X - _modListDragStartPoint.Value.X) < DragStartDistance &&
+                Math.Abs(listPoint.Y - _modListDragStartPoint.Value.Y) < DragStartDistance)
+            {
+                return;
+            }
+
+            if (!BeginModListDragVisual(e.Pointer))
+            {
+                return;
+            }
+        }
+
+        UpdateModListDragGhost(listPoint);
+        UpdateModListDragTarget(listPoint);
+        e.Handled = true;
+    }
+
+    private bool BeginModListDragVisual(IPointer pointer)
+    {
+        if (_modListDragSource is null || DataContext is not MainWindowViewModel viewModel)
+        {
+            return false;
+        }
+
+        if (!viewModel.TryBeginDrag(_modListDragSource))
+        {
+            return false;
+        }
+
+        var sourceContainer = ModListsBox.ContainerFromItem(_modListDragSource);
+        if (sourceContainer is null ||
+            sourceContainer.Bounds.Width <= 0 ||
+            sourceContainer.Bounds.Height <= 0)
+        {
+            return false;
+        }
+
+        var scaling = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1.0;
+        var pixelSize = new PixelSize(
+            Math.Max(1, (int)Math.Ceiling(sourceContainer.Bounds.Width * scaling)),
+            Math.Max(1, (int)Math.Ceiling(sourceContainer.Bounds.Height * scaling)));
+        var bitmap = new RenderTargetBitmap(pixelSize, new Vector(96 * scaling, 96 * scaling));
+        bitmap.Render(sourceContainer);
+
+        ModListDragGhostImage.Source = bitmap;
+        ModListDragGhost.Width = sourceContainer.Bounds.Width;
+        ModListDragGhost.Height = sourceContainer.Bounds.Height;
+        ModListDragGhost.IsVisible = true;
+
+        _modListDragSource.IsBeingDragged = true;
+        _isModListDragActive = true;
+        pointer.Capture(ModListsBox);
+        return true;
+    }
+
+    private void UpdateModListDragGhost(Avalonia.Point listPoint)
+    {
+        Canvas.SetLeft(ModListDragGhost, listPoint.X - _modListDragGhostOffset.X);
+        Canvas.SetTop(ModListDragGhost, listPoint.Y - _modListDragGhostOffset.Y);
+    }
+
+    private void UpdateModListDragTarget(Avalonia.Point listPoint)
+    {
+        if (DataContext is not MainWindowViewModel viewModel || _modListDragSource is null)
         {
             return;
         }
 
-        _isModListDragActive = true;
-        e.Pointer.Capture(ModListsBox);
-        e.Handled = true;
+        var newIndex = FindModListInsertionIndex(listPoint.Y, viewModel);
+        if (newIndex >= 0)
+        {
+            viewModel.UpdateDragPosition(_modListDragSource, newIndex);
+        }
+    }
+
+    private int FindModListInsertionIndex(double pointerY, MainWindowViewModel viewModel)
+    {
+        for (var i = 0; i < viewModel.ModLists.Count; i++)
+        {
+            var container = ModListsBox.ContainerFromIndex(i);
+            if (container is null)
+            {
+                continue;
+            }
+
+            var topLeft = container.TranslatePoint(new Avalonia.Point(0, 0), ModListsBox);
+            if (topLeft is null)
+            {
+                continue;
+            }
+
+            var midY = topLeft.Value.Y + container.Bounds.Height / 2;
+            if (pointerY < midY)
+            {
+                return i;
+            }
+        }
+
+        return Math.Max(0, viewModel.ModLists.Count - 1);
     }
 
     private async void ModListsBox_PointerReleased(object? sender, PointerReleasedEventArgs e)
     {
-        try
+        var wasActive = _isModListDragActive;
+        await EndModListDragAsync(e.Pointer, commit: true);
+        if (wasActive)
         {
-            if (!_isModListDragActive ||
-                _modListDragSource is null ||
-                DataContext is not MainWindowViewModel viewModel)
-            {
-                return;
-            }
-
-            var pointerPosition = e.GetPosition(this);
-            var target = FindModListRowAt(pointerPosition, out var targetControl);
-            if (target is null || target == _modListDragSource || targetControl is null)
-            {
-                return;
-            }
-
-            var targetPoint = e.GetPosition(targetControl);
-            var placeAfterTarget = targetPoint.Y > targetControl.Bounds.Height / 2;
-            await viewModel.MoveModListAsync(_modListDragSource, target, placeAfterTarget);
             e.Handled = true;
         }
-        finally
-        {
-            ClearModListDragState(e.Pointer);
-        }
     }
 
-    private void ModListsBox_PointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    private async void ModListsBox_PointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
     {
-        ClearModListDragState();
+        await EndModListDragAsync(null, commit: true);
     }
 
-    private ModListItemViewModel? FindModListRowAt(Avalonia.Point pointerPosition, out Control? targetControl)
+    private async Task EndModListDragAsync(IPointer? pointer, bool commit)
     {
-        targetControl = null;
-        if (this.InputHitTest(pointerPosition) is not Avalonia.Visual hit)
+        var source = _modListDragSource;
+        if (source is null)
         {
-            return null;
+            return;
         }
 
-        foreach (var visual in hit.GetSelfAndVisualAncestors())
-        {
-            if (visual is Control { Tag: ModListRowTag, DataContext: ModListItemViewModel item } control)
-            {
-                targetControl = control;
-                return item;
-            }
-        }
-
-        return null;
-    }
-
-    private void ClearModListDragState(IPointer? pointer = null)
-    {
-        pointer?.Capture(null);
+        var wasActive = _isModListDragActive;
         _modListDragSource = null;
         _modListDragStartPoint = null;
         _isModListDragActive = false;
+
+        pointer?.Capture(null);
+
+        if (!wasActive)
+        {
+            return;
+        }
+
+        ModListDragGhost.IsVisible = false;
+        ModListDragGhostImage.Source = null;
+        source.IsBeingDragged = false;
+
+        if (commit && DataContext is MainWindowViewModel viewModel)
+        {
+            await viewModel.EndDragAsync(source);
+        }
     }
 }
