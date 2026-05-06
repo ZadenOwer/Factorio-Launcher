@@ -50,7 +50,6 @@ public sealed class ModListItemViewModel : ViewModelBase
                 OnPropertyChanged(nameof(RowBorderBrush));
                 OnPropertyChanged(nameof(RowBorderThickness));
                 OnPropertyChanged(nameof(NameForeground));
-                OnPropertyChanged(nameof(SelectedMarkerOpacity));
             }
         }
     }
@@ -71,8 +70,7 @@ public sealed class ModListItemViewModel : ViewModelBase
     public string RowBackground => IsSelected ? "#2A241D" : "Transparent";
     public string RowBorderBrush => IsSelected ? "#D97A2C" : "Transparent";
     public string RowBorderThickness => IsSelected ? "1" : "0";
-    public string NameForeground => IsSelected ? "#F0A455" : "#E8DFCF";
-    public double SelectedMarkerOpacity => IsSelected ? 1.0 : 0.0;
+    public string NameForeground => IsActive ? "#5FA84A" : IsSelected ? "#F0A455" : "#E8DFCF";
 
     public AsyncRelayCommand ActivateCommand { get; }
     public RelayCommand EditCommand { get; }

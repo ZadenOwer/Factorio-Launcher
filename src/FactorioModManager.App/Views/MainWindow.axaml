@@ -348,11 +348,8 @@
                           Tag="ModListRow"
                           Opacity="{Binding RowOpacity}"
                           PointerPressed="ModListItem_PointerPressed">
-                    <Grid ColumnDefinitions="3,*" ColumnSpacing="7">
-                      <Grid>
-                        <Border Width="3" CornerRadius="1.5" Background="#D97A2C" Opacity="{Binding SelectedMarkerOpacity}" />
-                        <Border Width="2" CornerRadius="1" Background="#5FA84A" IsVisible="{Binding IsActive}" HorizontalAlignment="Center" />
-                      </Grid>
+                    <Grid ColumnDefinitions="2,*" ColumnSpacing="6">
+                      <Border Width="2" CornerRadius="1" Background="#5FA84A" IsVisible="{Binding IsActive}" />
                       <Grid Grid.Column="1" RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto" RowSpacing="2">
                         <TextBlock Text="{Binding Name}" Foreground="{Binding NameForeground}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
