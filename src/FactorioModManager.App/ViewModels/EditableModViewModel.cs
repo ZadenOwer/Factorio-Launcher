@@ -42,6 +42,12 @@ public sealed class EditableModViewModel : ViewModelBase
     public bool IsUsingOlderVersion => HasMultipleVersions &&
         !string.Equals(SelectedVersion, NewestVersion, StringComparison.OrdinalIgnoreCase);
     public string OlderVersionToolTip => $"Selected version is older than latest available version {NewestVersion}.";
+    public string VersionSelectionToolTip => IsUsingOlderVersion
+        ? OlderVersionToolTip
+        : "Selected mod version";
+    public string VersionBackground => IsUsingOlderVersion ? "#3A2412" : "#221D18";
+    public string VersionBorderBrush => IsUsingOlderVersion ? "#D97A2C" : "#3A342C";
+    public string VersionForeground => IsUsingOlderVersion ? "#F0A455" : "#E8DFCF";
 
     public bool IsSelected
     {
@@ -66,6 +72,10 @@ public sealed class EditableModViewModel : ViewModelBase
             {
                 OnPropertyChanged(nameof(IsUsingOlderVersion));
                 OnPropertyChanged(nameof(OlderVersionToolTip));
+                OnPropertyChanged(nameof(VersionSelectionToolTip));
+                OnPropertyChanged(nameof(VersionBackground));
+                OnPropertyChanged(nameof(VersionBorderBrush));
+                OnPropertyChanged(nameof(VersionForeground));
             }
         }
     }

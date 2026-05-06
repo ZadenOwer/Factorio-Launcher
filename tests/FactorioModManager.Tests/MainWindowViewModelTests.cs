@@ -132,10 +132,18 @@ public sealed class MainWindowViewModelTests
         Assert.Equal("1.0.0", multiVersionMod.SelectedVersion);
         Assert.True(multiVersionMod.IsUsingOlderVersion);
         Assert.Contains("1.2.0", multiVersionMod.OlderVersionToolTip);
+        Assert.Contains("1.2.0", multiVersionMod.VersionSelectionToolTip);
+        Assert.Equal("#3A2412", multiVersionMod.VersionBackground);
+        Assert.Equal("#D97A2C", multiVersionMod.VersionBorderBrush);
+        Assert.Equal("#F0A455", multiVersionMod.VersionForeground);
 
         multiVersionMod.SelectedVersion = "1.2.0";
 
         Assert.False(multiVersionMod.IsUsingOlderVersion);
+        Assert.Equal("Selected mod version", multiVersionMod.VersionSelectionToolTip);
+        Assert.Equal("#221D18", multiVersionMod.VersionBackground);
+        Assert.Equal("#3A342C", multiVersionMod.VersionBorderBrush);
+        Assert.Equal("#E8DFCF", multiVersionMod.VersionForeground);
 
         multiVersionMod.SelectedVersion = "1.0.0";
 
