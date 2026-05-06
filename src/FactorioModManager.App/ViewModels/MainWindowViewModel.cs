@@ -928,10 +928,17 @@ public sealed class MainWindowViewModel : ViewModelBase
                 ErrorMessage = $"Activated, but the active mod list could not be remembered: {ex.Message}";
             }
 
-            await _dialogService.ShowMessageAsync(
-                "Activation complete",
-                $"Activated {item.Name}.\nBackup created at:\n{result.BackupFolderPath}");
             await RefreshAsync();
+            StatusMessage = $"Activated {item.Name}.";
+            var launchGame = await _dialogService.ConfirmAsync(
+                "Activation complete",
+                $"Activated {item.Name}.\nBackup created at:\n{result.BackupFolderPath}\n\nLaunch Factorio now?",
+                "Launch");
+            if (launchGame)
+            {
+                await LaunchFactorioAsync();
+            }
+
             return;
         }
 

@@ -322,6 +322,39 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task Activating_mod_list_can_launch_game_after_success_prompt()
+    {
+        using var modsTemp = new TempDirectory();
+        using var installTemp = new TempDirectory();
+        File.WriteAllText(Path.Combine(modsTemp.Path, FactorioFileNames.ModListJson), "old-root-list");
+        File.WriteAllBytes(Path.Combine(modsTemp.Path, FactorioFileNames.ModSettingsDat), [0]);
+        CreateManagedList(modsTemp.Path, "Pack", "Pack description");
+        Directory.CreateDirectory(Path.Combine(installTemp.Path, "data"));
+
+        var settingsPath = Path.Combine(modsTemp.Path, "settings.json");
+        var appSettingsService = new AppSettingsService(settingsPath);
+        await appSettingsService.SaveAsync(new AppSettings
+        {
+            LastModsFolderPath = modsTemp.Path,
+            FactorioInstallFolderPath = installTemp.Path
+        });
+        var dialogs = new TestDialogService();
+        dialogs.ConfirmResponses.Enqueue(true);
+        dialogs.ConfirmResponses.Enqueue(true);
+        var launcher = new FakeFactorioGameLauncher { CanLaunchResult = true };
+        var viewModel = CreateViewModel(dialogs, appSettingsService, factorioGameLauncher: launcher);
+
+        await viewModel.InitializeAsync();
+        viewModel.SelectedModList = viewModel.ModLists.Single(list => list.Name == "Pack");
+        await viewModel.ActivateSelectedCommand.ExecuteAsync();
+
+        Assert.Equal(installTemp.Path, launcher.LaunchedInstallFolderPath);
+        Assert.Equal("Started Factorio.", viewModel.StatusMessage);
+        Assert.Equal(["Confirm", "Launch"], dialogs.ConfirmCalls.Select(call => call.ConfirmText));
+        Assert.Contains("Launch Factorio now?", dialogs.ConfirmCalls.Last().Message);
+    }
+
+    [Fact]
     public async Task SaveEdit_keeps_active_list_active_and_updates_root_files()
     {
         using var temp = new TempDirectory();

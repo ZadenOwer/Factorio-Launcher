@@ -4,9 +4,13 @@ namespace FactorioModManager.Tests;
 
 internal sealed class TestDialogService : IDialogService
 {
+    public sealed record ConfirmCall(string Title, string Message, string ConfirmText);
+
     public List<string> Errors { get; } = [];
     public Queue<string?> PickedFolders { get; } = [];
     public List<string> PickFolderTitles { get; } = [];
+    public Queue<bool> ConfirmResponses { get; } = [];
+    public List<ConfirmCall> ConfirmCalls { get; } = [];
 
     public Task<string?> PickFolderAsync(string title)
     {
@@ -21,7 +25,13 @@ internal sealed class TestDialogService : IDialogService
 
     public Task<bool> ConfirmAsync(string title, string message, string confirmText)
     {
-        return Task.FromResult(true);
+        ConfirmCalls.Add(new ConfirmCall(title, message, confirmText));
+        if (ConfirmResponses.Count > 0)
+        {
+            return Task.FromResult(ConfirmResponses.Dequeue());
+        }
+
+        return Task.FromResult(!string.Equals(confirmText, "Launch", StringComparison.OrdinalIgnoreCase));
     }
 
     public Task ShowMessageAsync(string title, string message)
