@@ -1166,7 +1166,9 @@ public sealed class MainWindowViewModel : ViewModelBase
                     Version = string.IsNullOrWhiteSpace(selectedVersion) ? modInfo.DisplayVersion : selectedVersion,
                     Author = modInfo.DisplayAuthor,
                     Description = modInfo.Description,
-                    Size = modInfo.DisplaySize
+                    Size = modInfo.DisplaySize,
+                    HasMultipleVersions = modInfo.AvailableVersions.Count > 1,
+                    NewestVersion = modInfo.AvailableVersions.FirstOrDefault()
                 });
             }
             else

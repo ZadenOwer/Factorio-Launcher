@@ -121,6 +121,16 @@ public sealed class MainWindowViewModelTests
         var viewModel = CreateViewModel(new TestDialogService(), appSettingsService);
 
         await viewModel.InitializeAsync();
+
+        var displayedMultiVersionMod = viewModel.SelectedMods.Single(mod => mod.Name == "multi-mod");
+
+        Assert.Equal("1.0.0", displayedMultiVersionMod.DisplayVersion);
+        Assert.True(displayedMultiVersionMod.IsUsingOlderVersion);
+        Assert.Equal("#3A2412", displayedMultiVersionMod.VersionBackground);
+        Assert.Equal("#D97A2C", displayedMultiVersionMod.VersionBorderBrush);
+        Assert.Equal("#F0A455", displayedMultiVersionMod.VersionForeground);
+        Assert.Contains("1.2.0", displayedMultiVersionMod.VersionToolTip);
+
         viewModel.EditSelectedCommand.Execute(null);
 
         var multiVersionMod = viewModel.EditableMods.Single(mod => mod.Name == "multi-mod");
