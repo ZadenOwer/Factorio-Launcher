@@ -77,10 +77,10 @@ public sealed class MainWindowViewModelTests
         using var temp = new TempDirectory();
         File.WriteAllText(Path.Combine(temp.Path, FactorioFileNames.ModListJson), """{"mods":[]}""");
         File.WriteAllBytes(Path.Combine(temp.Path, FactorioFileNames.ModSettingsDat), [1, 2, 3]);
-        ModScannerTests.CreateZip(Path.Combine(temp.Path, "alpha-mod_1.0.0.zip"), "alpha-mod", "Alpha Mod", "1.0.0");
+        ModScannerTests.CreateZip(Path.Combine(temp.Path, "alpha-mod_1.0.0.zip"), "alpha-mod", "Zulu Display", "1.0.0");
         ModScannerTests.CreateZip(Path.Combine(temp.Path, "beta-mod_1.0.0.zip"), "beta-mod", "Beta Mod", "1.0.0");
-        ModScannerTests.CreateZip(Path.Combine(temp.Path, "gamma-mod_1.0.0.zip"), "gamma-mod", "Gamma Mod", "1.0.0");
-        CreateManagedList(temp.Path, "Selection", "Selected beta", "beta-mod");
+        ModScannerTests.CreateZip(Path.Combine(temp.Path, "gamma-mod_1.0.0.zip"), "gamma-mod", "Alpha Display", "1.0.0");
+        CreateManagedList(temp.Path, "Selection", "Selected beta", "beta-mod", "gamma-mod");
 
         var settingsPath = Path.Combine(temp.Path, "settings.json");
         var appSettingsService = new AppSettingsService(settingsPath);
@@ -89,19 +89,22 @@ public sealed class MainWindowViewModelTests
         var viewModel = CreateViewModel(dialogs, appSettingsService);
 
         await viewModel.InitializeAsync();
+
+        Assert.Equal(["beta-mod", "gamma-mod"], viewModel.SelectedMods.Select(mod => mod.Name));
+
         viewModel.EditSelectedCommand.Execute(null);
 
         Assert.True(viewModel.IsEditorSortedByActive);
-        Assert.Equal(["Beta Mod", "Alpha Mod", "Gamma Mod"], viewModel.EditableMods.Select(mod => mod.Title));
+        Assert.Equal(["beta-mod", "gamma-mod", "alpha-mod"], viewModel.EditableMods.Select(mod => mod.Name));
 
         viewModel.EditableMods.Single(mod => mod.Name == "alpha-mod").IsSelected = true;
 
-        Assert.Equal(["Alpha Mod", "Beta Mod", "Gamma Mod"], viewModel.EditableMods.Select(mod => mod.Title));
+        Assert.Equal(["alpha-mod", "beta-mod", "gamma-mod"], viewModel.EditableMods.Select(mod => mod.Name));
 
         viewModel.SortEditorByNameCommand.Execute(null);
 
         Assert.True(viewModel.IsEditorSortedByName);
-        Assert.Equal(["Alpha Mod", "Beta Mod", "Gamma Mod"], viewModel.EditableMods.Select(mod => mod.Title));
+        Assert.Equal(["alpha-mod", "beta-mod", "gamma-mod"], viewModel.EditableMods.Select(mod => mod.Name));
     }
 
     [Fact]

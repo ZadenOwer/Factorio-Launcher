@@ -1210,11 +1210,11 @@ public sealed class MainWindowViewModel : ViewModelBase
         var ordered = IsEditorSortedByActive
             ? visible
                 .OrderByDescending(mod => mod.IsSelected)
+                .ThenBy(mod => mod.Name, StringComparer.CurrentCultureIgnoreCase)
                 .ThenBy(mod => mod.Title, StringComparer.CurrentCultureIgnoreCase)
-                .ThenBy(mod => mod.Name, StringComparer.OrdinalIgnoreCase)
             : visible
-                .OrderBy(mod => mod.Title, StringComparer.CurrentCultureIgnoreCase)
-                .ThenBy(mod => mod.Name, StringComparer.OrdinalIgnoreCase);
+                .OrderBy(mod => mod.Name, StringComparer.CurrentCultureIgnoreCase)
+                .ThenBy(mod => mod.Title, StringComparer.CurrentCultureIgnoreCase);
 
         foreach (var mod in ordered)
         {
