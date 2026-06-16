@@ -6,11 +6,11 @@ namespace FactorioModManager.Tests;
 public sealed class ModListReaderWriterTests
 {
     [Fact]
-    public void Writer_outputs_factorio_shape_with_base_and_enabled_flags()
+    public void Writer_outputs_factorio_shape_with_base_and_selected_mods_enabled()
     {
         using var temp = new TempDirectory();
 
-        new ModListWriter().Write(temp.Path, ["alien-biomes"], ["alien-biomes", "krastorio2"]);
+        new ModListWriter().Write(temp.Path, ["alien-biomes", "krastorio2"]);
 
         using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(temp.Path, FactorioFileNames.ModListJson)));
         var mods = document.RootElement.GetProperty("mods").EnumerateArray().ToList();
@@ -18,7 +18,8 @@ public sealed class ModListReaderWriterTests
         Assert.Equal("base", mods[0].GetProperty("name").GetString());
         Assert.True(mods[0].GetProperty("enabled").GetBoolean());
         Assert.Contains(mods, mod => mod.GetProperty("name").GetString() == "alien-biomes" && mod.GetProperty("enabled").GetBoolean());
-        Assert.Contains(mods, mod => mod.GetProperty("name").GetString() == "krastorio2" && !mod.GetProperty("enabled").GetBoolean());
+        Assert.Contains(mods, mod => mod.GetProperty("name").GetString() == "krastorio2" && mod.GetProperty("enabled").GetBoolean());
+        Assert.Equal(3, mods.Count);
     }
 
     [Fact]

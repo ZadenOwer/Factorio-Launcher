@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FactorioModManager.App.Factorio;
 
 namespace FactorioModManager.Tests;
@@ -19,24 +20,30 @@ public sealed class BackupAndActivationTests
     }
 
     [Fact]
-    public void Activator_creates_backup_and_copies_selected_list_to_root()
+    public void Activator_merges_list_into_root_and_copies_settings()
     {
         using var temp = new TempDirectory();
-        File.WriteAllText(Path.Combine(temp.Path, FactorioFileNames.ModListJson), "old-list");
+        var rootListJson = """{"mods":[{"name":"base","enabled":true},{"name":"mod-a","enabled":true},{"name":"mod-b","enabled":true}]}""";
+        File.WriteAllText(Path.Combine(temp.Path, FactorioFileNames.ModListJson), rootListJson);
         File.WriteAllBytes(Path.Combine(temp.Path, FactorioFileNames.ModSettingsDat), [1]);
 
         var listFolder = ManagerWorkspacePaths.GetManagedListFolder(temp.Path, "NewPack");
         Directory.CreateDirectory(listFolder);
-        File.WriteAllText(Path.Combine(listFolder, FactorioFileNames.ModListJson), "new-list");
+        var listJson = """{"mods":[{"name":"base","enabled":true},{"name":"mod-a","enabled":true}]}""";
+        File.WriteAllText(Path.Combine(listFolder, FactorioFileNames.ModListJson), listJson);
         File.WriteAllBytes(Path.Combine(listFolder, FactorioFileNames.ModSettingsDat), [2, 3]);
 
         var result = new ModListActivator(new BackupService()).Activate(temp.Path, listFolder);
 
         Assert.True(result.Success, result.ErrorMessage);
-        Assert.Equal("new-list", File.ReadAllText(Path.Combine(temp.Path, FactorioFileNames.ModListJson)));
         Assert.Equal([2, 3], File.ReadAllBytes(Path.Combine(temp.Path, FactorioFileNames.ModSettingsDat)));
         Assert.NotNull(result.BackupFolderPath);
-        Assert.Equal("old-list", File.ReadAllText(Path.Combine(result.BackupFolderPath!, FactorioFileNames.ModListJson)));
+        Assert.Equal(rootListJson, File.ReadAllText(Path.Combine(result.BackupFolderPath!, FactorioFileNames.ModListJson)));
+
+        using var doc = JsonDocument.Parse(File.ReadAllText(Path.Combine(temp.Path, FactorioFileNames.ModListJson)));
+        var mods = doc.RootElement.GetProperty("mods").EnumerateArray().ToList();
+        Assert.Contains(mods, m => m.GetProperty("name").GetString() == "mod-a" && m.GetProperty("enabled").GetBoolean());
+        Assert.Contains(mods, m => m.GetProperty("name").GetString() == "mod-b" && !m.GetProperty("enabled").GetBoolean());
     }
 
     [Fact]
