@@ -56,6 +56,16 @@ public sealed class ModInfoReader
         }
     }
 
+    private static IReadOnlyList<string> ReadDependencies(JsonElement element)
+    {
+        if (!element.TryGetProperty("dependencies", out var deps) || deps.ValueKind != JsonValueKind.Array)
+            return [];
+        return deps.EnumerateArray()
+            .Where(d => d.ValueKind == JsonValueKind.String)
+            .Select(d => d.GetString()!)
+            .ToList();
+    }
+
     private static string? ReadString(JsonElement element, string propertyName)
     {
         return element.TryGetProperty(propertyName, out var value) && value.ValueKind == JsonValueKind.String
@@ -70,6 +80,7 @@ public sealed class ModInfoReader
         var version = ReadString(root, "version");
         var author = ReadString(root, "author");
         var description = ReadString(root, "description");
+        var dependencies = ReadDependencies(root);
 
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -88,7 +99,8 @@ public sealed class ModInfoReader
             SourceZipPaths = [sourcePath],
             AvailableVersions = string.IsNullOrWhiteSpace(version) ? [] : [version],
             SizeBytes = size,
-            TotalSizeBytes = size
+            TotalSizeBytes = size,
+            Dependencies = dependencies
         };
     }
 
@@ -97,6 +109,9 @@ public sealed class ModInfoReader
         var stem = Directory.Exists(sourcePath)
             ? Path.GetFileName(sourcePath)
             : Path.GetFileNameWithoutExtension(sourcePath);
+        // .zip.disabled → GetFileNameWithoutExtension gives "Name_1.0.0.zip"; strip the inner .zip too
+        if (stem.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+            stem = Path.GetFileNameWithoutExtension(stem);
         var match = FileNamePattern.Match(stem);
         var name = match.Success ? match.Groups["name"].Value : stem;
         var version = match.Success ? match.Groups["version"].Value : null;
@@ -158,7 +173,8 @@ file static class ModInfoExtensions
             SizeBytes = modInfo.SizeBytes,
             TotalSizeBytes = modInfo.TotalSizeBytes,
             HasMetadataWarning = modInfo.HasMetadataWarning,
-            WarningMessage = modInfo.WarningMessage
+            WarningMessage = modInfo.WarningMessage,
+            Dependencies = modInfo.Dependencies
         };
     }
 }

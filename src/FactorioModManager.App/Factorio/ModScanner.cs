@@ -32,15 +32,17 @@ public sealed class ModScanner
             .Where(folder => File.Exists(Path.Combine(folder, "info.json")))
             .Select(_reader.ReadDirectory);
         var factorioDataMods = ScanFactorioDataMods(factorioInstallFolderPath);
+        var disabledMods = ScanDisabledMods(modsFolderPath);
 
-        return zippedMods
+        var enabledMods = zippedMods
             .Concat(unpackedMods)
             .Concat(factorioDataMods)
             .GroupBy(mod => mod.Name, StringComparer.OrdinalIgnoreCase)
             .Select(ChoosePreferredDuplicate)
             .OrderBy(mod => mod.DisplayTitle, StringComparer.CurrentCultureIgnoreCase)
-            .ThenBy(mod => mod.Name, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+            .ThenBy(mod => mod.Name, StringComparer.OrdinalIgnoreCase);
+
+        return enabledMods.Concat(disabledMods).ToList();
     }
 
     private IEnumerable<ModInfo> ScanFactorioDataMods(string? factorioInstallFolderPath)
@@ -62,6 +64,12 @@ public sealed class ModScanner
             .Where(folder => File.Exists(Path.Combine(folder, "info.json")))
             .Select(_reader.ReadDirectory);
     }
+
+    private IEnumerable<ModInfo> ScanDisabledMods(string modsFolderPath) =>
+        Directory.EnumerateFiles(modsFolderPath, "*.zip.disabled", SearchOption.TopDirectoryOnly)
+            .Select(path => _reader.Read(path).WithDisabled())
+            .OrderBy(mod => mod.DisplayTitle, StringComparer.CurrentCultureIgnoreCase)
+            .ThenBy(mod => mod.Name, StringComparer.OrdinalIgnoreCase);
 
     private static bool IsManagerFolder(string modsFolderPath, string folderPath)
     {
@@ -106,7 +114,8 @@ public sealed class ModScanner
             SizeBytes = preferred.SizeBytes,
             TotalSizeBytes = mods.Sum(mod => mod.TotalSizeBytes > 0 ? mod.TotalSizeBytes : mod.SizeBytes),
             HasMetadataWarning = mods.Any(mod => mod.HasMetadataWarning),
-            WarningMessage = BuildWarning(mods)
+            WarningMessage = BuildWarning(mods),
+            Dependencies = preferred.Dependencies
         };
     }
 

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FactorioModManager.App.Models;
 
 namespace FactorioModManager.App.Factorio;
@@ -48,7 +49,7 @@ public sealed class ModListActivator
 
             backupFolder = _backupService.CreateBackup(modsFolderPath);
 
-            File.Copy(sourceModList, rootModList, overwrite: true);
+            MergeModListIntoRoot(sourceModList, rootModList);
             rootFilesModified = true;
             File.Copy(sourceModSettings, rootModSettings, overwrite: true);
 
@@ -77,6 +78,57 @@ public sealed class ModListActivator
             BackupFolderPath = backupFolderPath,
             RootFilesModified = rootFilesModified
         };
+    }
+
+    private static void MergeModListIntoRoot(string sourceModList, string rootModList)
+    {
+        var listMods = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+
+        using (var stream = File.OpenRead(sourceModList))
+        using (var doc = JsonDocument.Parse(stream))
+        {
+            if (doc.RootElement.TryGetProperty("mods", out var modsEl) && modsEl.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var el in modsEl.EnumerateArray())
+                {
+                    var name = el.TryGetProperty("name", out var n) ? n.GetString() : null;
+                    if (string.IsNullOrWhiteSpace(name)) continue;
+                    var enabled = !el.TryGetProperty("enabled", out var e) || e.GetBoolean();
+                    listMods[name] = enabled;
+                }
+            }
+        }
+
+        var rootEntries = new List<(string Name, bool Enabled)>();
+
+        if (File.Exists(rootModList))
+        {
+            using var stream = File.OpenRead(rootModList);
+            using var doc = JsonDocument.Parse(stream);
+            if (doc.RootElement.TryGetProperty("mods", out var modsEl) && modsEl.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var el in modsEl.EnumerateArray())
+                {
+                    var name = el.TryGetProperty("name", out var n) ? n.GetString() : null;
+                    if (string.IsNullOrWhiteSpace(name)) continue;
+                    var enabled = listMods.TryGetValue(name, out var listEnabled) ? listEnabled : false;
+                    rootEntries.Add((name, enabled));
+                    listMods.Remove(name);
+                }
+            }
+        }
+
+        foreach (var (name, enabled) in listMods)
+            rootEntries.Add((name, enabled));
+
+        var payload = new
+        {
+            mods = rootEntries.Select(e => new { name = e.Name, enabled = e.Enabled }).ToArray()
+        };
+
+        var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, WriteIndented = true };
+        using var outStream = File.Create(rootModList);
+        JsonSerializer.Serialize(outStream, payload, options);
     }
 
     internal static bool IsImmediateChild(string parentFolder, string childFolder)

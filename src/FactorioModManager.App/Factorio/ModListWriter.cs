@@ -10,37 +10,25 @@ public sealed class ModListWriter
         WriteIndented = true
     };
 
-    public void Write(string modListFolderPath, IEnumerable<string> selectedModNames, IEnumerable<string> availableModNames)
+    public void Write(string modListFolderPath, IEnumerable<string> selectedModNames)
     {
         Directory.CreateDirectory(modListFolderPath);
-        var selected = selectedModNames
-            .Where(name => !string.IsNullOrWhiteSpace(name))
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var available = availableModNames
-            .Where(name => !string.IsNullOrWhiteSpace(name))
-            .Where(name => !string.Equals(name, "base", StringComparison.OrdinalIgnoreCase))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        var payload = new FactorioModListJson
+        var mods = new List<FactorioModJson>
         {
-            Mods =
-            [
-                new FactorioModJson
-                {
-                    Name = "base",
-                    Enabled = true
-                },
-                .. available.Select(name => new FactorioModJson
-                {
-                    Name = name,
-                    Enabled = selected.Contains(name)
-                })
-            ]
+            new() { Name = "base", Enabled = true }
         };
 
+        foreach (var name in selectedModNames
+            .Where(n => !string.IsNullOrWhiteSpace(n) &&
+                        !string.Equals(n, "base", StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(n => n, StringComparer.OrdinalIgnoreCase))
+        {
+            mods.Add(new() { Name = name, Enabled = true });
+        }
+
+        var payload = new FactorioModListJson { Mods = mods };
         var path = Path.Combine(modListFolderPath, FactorioFileNames.ModListJson);
         using var stream = File.Create(path);
         JsonSerializer.Serialize(stream, payload, JsonOptions);
