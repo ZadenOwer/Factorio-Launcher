@@ -7,7 +7,8 @@
         MinWidth="980"
         MinHeight="620"
         Background="#1A1814"
-        FontFamily="Inter, Segoe UI, Arial">
+        FontFamily="Inter, Segoe UI, Arial"
+		Icon="avares://FactorioModManager.App/Assets/icon.ico">
   <Window.Styles>
     <Style Selector="TextBlock">
       <Setter Property="Foreground" Value="#E8DFCF" />
@@ -199,6 +200,7 @@
       <Setter Property="BorderBrush" Value="#D97A2C" />
     </Style>
     <Style Selector="Border.row">
+      <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderBrush" Value="#221D18" />
       <Setter Property="BorderThickness" Value="0,0,0,1" />
       <Setter Property="Padding" Value="18,8" />
@@ -234,7 +236,7 @@
 
   <Grid RowDefinitions="48,*">
     <Border Grid.Row="0" Background="#15110D" BorderBrush="#221D18" BorderThickness="0,0,0,1" Padding="14,8">
-      <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,*,Auto,Auto" ColumnSpacing="12" VerticalAlignment="Center">
+      <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto" ColumnSpacing="12" VerticalAlignment="Center">
         <Border Width="24" Height="24" CornerRadius="4" Background="#D97A2C" BorderBrush="#B86620" BorderThickness="1">
           <TextBlock Text="F" Foreground="#1A0E05" FontWeight="Bold" FontFamily="Consolas, Cascadia Mono, monospace" HorizontalAlignment="Center" VerticalAlignment="Center" />
         </Border>
@@ -248,22 +250,7 @@
                   Data="M12,4 C9.7,4 7.7,5 6.3,6.6 L4.8,5.1 L4.8,10 L9.7,10 L7.7,8 C8.8,6.8 10.3,6 12,6 C15.3,6 18,8.7 18,12 C18,15.3 15.3,18 12,18 C9.4,18 7.2,16.3 6.4,14 L4.3,14 C5.2,17.4 8.3,20 12,20 C16.4,20 20,16.4 20,12 C20,7.6 16.4,4 12,4 Z" />
           </Viewbox>
         </Button>
-        <TextBlock Grid.Column="3" Text="/" Classes="dim" VerticalAlignment="Center" />
-        <Button Grid.Column="4" Classes="path" Command="{Binding BrowseFolderCommand}" VerticalAlignment="Center">
-          <TextBlock Text="{Binding FolderPathCompact}" Classes="mono" TextTrimming="CharacterEllipsis" MaxWidth="360" />
-        </Button>
-        <TextBlock Grid.Column="5" Text="/" Classes="dim" VerticalAlignment="Center" />
-        <Button Grid.Column="6"
-                Classes="path"
-                Command="{Binding BrowseInstallFolderCommand}"
-                VerticalAlignment="Center"
-                ToolTip.Tip="{Binding FactorioInstallFolderDisplay}">
-          <StackPanel Orientation="Horizontal" Spacing="5">
-            <TextBlock Text="data:" Classes="dim" VerticalAlignment="Center" />
-            <TextBlock Text="{Binding FactorioInstallFolderCompact}" Classes="mono" TextTrimming="CharacterEllipsis" MaxWidth="220" />
-          </StackPanel>
-        </Button>
-        <StackPanel Grid.Column="7" Orientation="Horizontal" Spacing="0" VerticalAlignment="Center">
+        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="0" VerticalAlignment="Center">
           <Button Classes="tabActive" Command="{Binding ShowListsCommand}" IsVisible="{Binding IsListsTabActive}">
             <StackPanel Orientation="Horizontal" Spacing="6">
               <TextBlock Text="Lists" Foreground="#F0A455" FontWeight="Medium" />
@@ -296,9 +283,21 @@
               </Border>
             </StackPanel>
           </Button>
+          <Button Classes="tabActive" Command="{Binding ShowExploreCommand}" IsVisible="{Binding IsExploreTabActive}">
+            <TextBlock Text="Explore" Foreground="#F0A455" FontWeight="Medium" />
+          </Button>
+          <Button Classes="tab" Command="{Binding ShowExploreCommand}" IsVisible="{Binding IsExploreTabInactive}">
+            <TextBlock Text="Explore" Foreground="#8A7D65" FontWeight="Medium" />
+          </Button>
+          <Button Classes="tabActive" Command="{Binding ShowSettingsCommand}" IsVisible="{Binding IsSettingsTabActive}">
+            <TextBlock Text="Settings" Foreground="#F0A455" FontWeight="Medium" />
+          </Button>
+          <Button Classes="tab" Command="{Binding ShowSettingsCommand}" IsVisible="{Binding IsSettingsTabInactive}">
+            <TextBlock Text="Settings" Foreground="#8A7D65" FontWeight="Medium" />
+          </Button>
         </StackPanel>
 
-        <Button Grid.Column="9"
+        <Button Grid.Column="5"
                 Classes="activeBadge"
                 Command="{Binding SelectActiveListCommand}"
                 IsVisible="{Binding HasActiveList}"
@@ -308,7 +307,7 @@
             <TextBlock Text="{Binding ActiveListName}" Foreground="#5FA84A" FontWeight="SemiBold" FontSize="12" />
           </StackPanel>
         </Button>
-        <Button Grid.Column="10"
+        <Button Grid.Column="6"
                 Classes="primary"
                 Content="Play"
                 Command="{Binding LaunchFactorioCommand}"
@@ -317,8 +316,9 @@
       </Grid>
     </Border>
 
-    <Grid Grid.Row="1" ColumnDefinitions="270,*">
-      <Border Grid.Column="0" BorderBrush="#221D18" BorderThickness="0,0,1,0">
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
+      <Border Grid.Column="0" Width="270" BorderBrush="#221D18" BorderThickness="0,0,1,0"
+              IsVisible="{Binding IsListsTabActive}">
         <Grid RowDefinitions="Auto,*" Background="#1A1814">
           <StackPanel Grid.Row="0" Margin="12,10,12,8" Spacing="8">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="7">
@@ -394,6 +394,29 @@
         </Grid>
       </Border>
 
+      <!-- Explore filter sidebar -->
+      <Border Grid.Column="0" Width="200" BorderBrush="#221D18" BorderThickness="0,0,1,0"
+              IsVisible="{Binding IsExploreTabActive}" Background="#1A1814">
+        <ScrollViewer>
+          <StackPanel Margin="14,14" Spacing="18">
+
+            <StackPanel Spacing="8">
+              <TextBlock Text="CATEGORY" Classes="header" />
+              <ItemsControl ItemsSource="{Binding PortalCategories}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <CheckBox Content="{Binding Label}"
+                              IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                              Margin="0,2" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+
       <Grid Grid.Column="1" Background="#1A1814">
         <Grid IsVisible="{Binding IsListsTabActive}" RowDefinitions="Auto,Auto,Auto,*">
           <Border Grid.Row="0" BorderBrush="#221D18" BorderThickness="0,0,0,1" Padding="18,12">
@@ -434,13 +457,28 @@
                   <Button Content="Edit" Command="{Binding EditSelectedCommand}" ToolTip.Tip="{Binding EditSelectedToolTip}" />
                   <Button Content="Duplicate" Command="{Binding DuplicateSelectedCommand}" />
                   <Button Classes="danger" Content="Delete" Command="{Binding DeleteSelectedCommand}" />
-                  <Button Classes="primary" Content="Activate" Command="{Binding ActivateSelectedCommand}" IsEnabled="{Binding CanActivateSelected}" ToolTip.Tip="{Binding ActivateSelectedToolTip}" />
+                  <Button Classes="primary" Content="Activate" Command="{Binding ActivateSelectedCommand}" IsEnabled="{Binding CanActivateSelected}" ToolTip.Tip="{Binding ActivateSelectedToolTip}" ToolTip.ShowOnDisabled="True" />
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Spacing="7" IsVisible="{Binding IsEditMode}">
                   <Button Content="Import" Command="{Binding ImportCurrentToDraftCommand}" ToolTip.Tip="Overwrite list with current game mods" />
                   <Button Content="Cancel" Command="{Binding CancelEditCommand}" />
                   <Button Classes="primary" Content="Save" Command="{Binding SaveEditCommand}" />
                 </StackPanel>
+              </StackPanel>
+
+              <StackPanel Grid.Column="1" Grid.Row="1" Orientation="Horizontal" Spacing="7"
+                          VerticalAlignment="Top" IsVisible="{Binding IsNormalMode}">
+                <ComboBox ItemsSource="{Binding ImportSourceOptions}"
+                          SelectedItem="{Binding ImportSourceList, Mode=TwoWay}"
+                          PlaceholderText="Import mods from list…"
+                          MinWidth="180">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                      <TextBlock Text="{Binding Name}" />
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+                <Button Content="Import" Command="{Binding ImportFromListCommand}" />
               </StackPanel>
             </Grid>
           </Border>
@@ -501,27 +539,45 @@
             <ListBox IsVisible="{Binding IsNormalMode}" ItemsSource="{Binding SelectedMods}" BorderThickness="0" Background="Transparent">
               <ListBox.ItemTemplate>
                 <DataTemplate>
-                  <Border Classes="row">
-                    <Grid ColumnDefinitions="*,90,120" ColumnSpacing="12" VerticalAlignment="Center" HorizontalAlignment="Stretch">
-                      <Grid RowDefinitions="Auto,Auto" ClipToBounds="True" HorizontalAlignment="Stretch">
-                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Grid.Row="1" Text="{Binding Subtitle}" Classes="muted" TextTrimming="CharacterEllipsis" />
+                  <Border Classes="row" Cursor="Hand" Opacity="{Binding RowOpacity}" PointerPressed="SelectedModRow_PointerPressed">
+                    <StackPanel>
+                      <Grid ColumnDefinitions="*,90,120" ColumnSpacing="12" VerticalAlignment="Center" HorizontalAlignment="Stretch">
+                        <Grid ColumnDefinitions="12,*" RowDefinitions="Auto,Auto" ClipToBounds="True" HorizontalAlignment="Stretch">
+                          <TextBlock Text="{Binding ExpandChevron}" Foreground="#6A604F" FontSize="10" VerticalAlignment="Top" Margin="0,2,0,0" />
+                          <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Subtitle}" Classes="muted" TextTrimming="CharacterEllipsis" />
+                        </Grid>
+                        <TextBlock Grid.Column="1" Text="{Binding Size}" Classes="mono" VerticalAlignment="Center" />
+                        <Border Grid.Column="2"
+                                Background="{Binding VersionBackground}"
+                                BorderBrush="{Binding VersionBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="7,0"
+                                Height="24"
+                                MinWidth="66"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Center"
+                                ToolTip.Tip="{Binding VersionToolTip}">
+                          <TextBlock Text="{Binding DisplayVersion}" Foreground="{Binding VersionForeground}" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
                       </Grid>
-                      <TextBlock Grid.Column="1" Text="{Binding Size}" Classes="mono" VerticalAlignment="Center" />
-                      <Border Grid.Column="2"
-                              Background="{Binding VersionBackground}"
-                              BorderBrush="{Binding VersionBorderBrush}"
-                              BorderThickness="1"
-                              CornerRadius="4"
-                              Padding="7,0"
-                              Height="24"
-                              MinWidth="66"
-                              HorizontalAlignment="Left"
-                              VerticalAlignment="Center"
-                              ToolTip.Tip="{Binding VersionToolTip}">
-                        <TextBlock Text="{Binding DisplayVersion}" Foreground="{Binding VersionForeground}" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                      </Border>
-                    </Grid>
+                      <StackPanel IsVisible="{Binding IsExpanded}" Margin="12,8,0,2" Spacing="2">
+                        <TextBlock Text="DEPENDENCIES" Classes="header" Margin="0,0,0,3" />
+                        <ItemsControl ItemsSource="{Binding DependencyItems}">
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                              <TextBlock Text="{Binding Text}" Foreground="{Binding Foreground}" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="11" />
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="No dependencies" Classes="dim" IsVisible="{Binding !HasDependencies}" />
+                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,6,0,0" IsVisible="{Binding CanRemoveFromList}">
+                          <Button Content="{Binding ToggleListDisabledLabel}" Command="{Binding ToggleListDisabledCommand}" />
+                          <Button Classes="danger" Content="Remove from list…" Command="{Binding RemoveCommand}" />
+                        </StackPanel>
+                      </StackPanel>
+                    </StackPanel>
                   </Border>
                 </DataTemplate>
               </ListBox.ItemTemplate>
@@ -530,36 +586,50 @@
             <ListBox IsVisible="{Binding IsEditMode}" ItemsSource="{Binding EditableMods}" BorderThickness="0" Background="Transparent">
               <ListBox.ItemTemplate>
                 <DataTemplate>
-                  <Border Classes="row" Background="{Binding RowBackground}">
-                    <Grid ColumnDefinitions="62,*,90,130" ColumnSpacing="12" VerticalAlignment="Center" HorizontalAlignment="Stretch">
-                      <ToggleButton Classes="modCheck" IsChecked="{Binding IsSelected, Mode=TwoWay}" Content="&#x2713;" VerticalAlignment="Center" />
-                      <Grid Grid.Column="1" RowDefinitions="Auto,Auto" ClipToBounds="True" HorizontalAlignment="Stretch">
-                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Grid.Row="1" Text="{Binding Subtitle}" Classes="muted" TextTrimming="CharacterEllipsis" />
+                  <Border Classes="row" Background="{Binding RowBackground}" PointerPressed="EditableModRow_PointerPressed">
+                    <StackPanel>
+                      <Grid ColumnDefinitions="62,*,90,130" ColumnSpacing="12" VerticalAlignment="Center" HorizontalAlignment="Stretch">
+                        <ToggleButton Classes="modCheck" IsChecked="{Binding IsSelected, Mode=TwoWay}" Content="&#x2713;" VerticalAlignment="Center" />
+                        <Grid Grid.Column="1" ColumnDefinitions="12,*" RowDefinitions="Auto,Auto" ClipToBounds="True" HorizontalAlignment="Stretch">
+                          <TextBlock Text="{Binding ExpandChevron}" Foreground="#6A604F" FontSize="10" VerticalAlignment="Top" Margin="0,2,0,0" />
+                          <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Subtitle}" Classes="muted" TextTrimming="CharacterEllipsis" />
+                        </Grid>
+                        <TextBlock Grid.Column="2" Text="{Binding Size}" Classes="mono" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="3" Spacing="3" VerticalAlignment="Center">
+                          <ComboBox ItemsSource="{Binding AvailableVersions}"
+                                    SelectedItem="{Binding SelectedVersion}"
+                                    IsEnabled="{Binding IsSelected}"
+                                    IsVisible="{Binding HasMultipleVersions}"
+                                    Background="{Binding VersionBackground}"
+                                    BorderBrush="{Binding VersionBorderBrush}"
+                                    Foreground="{Binding VersionForeground}"
+                                    ToolTip.Tip="{Binding VersionSelectionToolTip}" />
+                          <Border Background="#221D18"
+                                  BorderBrush="#3A342C"
+                                  BorderThickness="1"
+                                  CornerRadius="4"
+                                  Padding="7,0"
+                                  Height="24"
+                                  MinWidth="66"
+                                  HorizontalAlignment="Left"
+                                  IsVisible="{Binding HasSingleVersion}">
+                            <TextBlock Text="{Binding SelectedVersion}" Classes="mono" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                          </Border>
+                        </StackPanel>
                       </Grid>
-                      <TextBlock Grid.Column="2" Text="{Binding Size}" Classes="mono" VerticalAlignment="Center" />
-                      <StackPanel Grid.Column="3" Spacing="3" VerticalAlignment="Center">
-                        <ComboBox ItemsSource="{Binding AvailableVersions}"
-                                  SelectedItem="{Binding SelectedVersion}"
-                                  IsEnabled="{Binding IsSelected}"
-                                  IsVisible="{Binding HasMultipleVersions}"
-                                  Background="{Binding VersionBackground}"
-                                  BorderBrush="{Binding VersionBorderBrush}"
-                                  Foreground="{Binding VersionForeground}"
-                                  ToolTip.Tip="{Binding VersionSelectionToolTip}" />
-                        <Border Background="#221D18"
-                                BorderBrush="#3A342C"
-                                BorderThickness="1"
-                                CornerRadius="4"
-                                Padding="7,0"
-                                Height="24"
-                                MinWidth="66"
-                                HorizontalAlignment="Left"
-                                IsVisible="{Binding HasSingleVersion}">
-                          <TextBlock Text="{Binding SelectedVersion}" Classes="mono" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
+                      <StackPanel IsVisible="{Binding IsExpanded}" Margin="74,8,0,2" Spacing="2">
+                        <TextBlock Text="DEPENDENCIES" Classes="header" Margin="0,0,0,3" />
+                        <ItemsControl ItemsSource="{Binding DependencyItems}">
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                              <TextBlock Text="{Binding Text}" Foreground="{Binding Foreground}" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="11" />
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="No dependencies" Classes="dim" IsVisible="{Binding !HasDependencies}" />
                       </StackPanel>
-                    </Grid>
+                    </StackPanel>
                   </Border>
                 </DataTemplate>
               </ListBox.ItemTemplate>
@@ -570,34 +640,437 @@
         <Grid IsVisible="{Binding IsModsTabActive}" RowDefinitions="Auto,Auto,*">
           <StackPanel Grid.Row="0" Margin="18,14" Spacing="4">
             <TextBlock Text="Installed Mods" FontSize="18" FontWeight="SemiBold" />
-            <TextBlock Text="{Binding AvailableModCount, StringFormat='{}{0} root mods detected. Zip files are read-only.'}" Classes="muted" />
+            <TextBlock Classes="muted">
+              <TextBlock.Text>
+                <MultiBinding StringFormat="{}{0} mods — {1} disabled">
+                  <Binding Path="AvailableModCount" />
+                  <Binding Path="DisabledModCount" />
+                </MultiBinding>
+              </TextBlock.Text>
+            </TextBlock>
           </StackPanel>
           <Border Grid.Row="1" BorderBrush="#221D18" BorderThickness="0,1,0,1">
-            <Grid ColumnDefinitions="*,90,130" Margin="18,7" ColumnSpacing="12">
+            <Grid ColumnDefinitions="*,90,70,130" Margin="18,7" ColumnSpacing="12">
               <TextBlock Classes="header" Text="NAME" />
               <TextBlock Grid.Column="1" Classes="header" Text="SIZE" />
-              <TextBlock Grid.Column="2" Classes="header" Text="VERSIONS" />
+              <TextBlock Grid.Column="2" Classes="header" Text="DEPS" />
+              <TextBlock Grid.Column="3" Classes="header" Text="VERSIONS" />
             </Grid>
           </Border>
           <ListBox Grid.Row="2" ItemsSource="{Binding InstalledMods}" BorderThickness="0" Background="Transparent">
             <ListBox.ItemTemplate>
               <DataTemplate>
-                <Border Classes="row">
-                  <Grid ColumnDefinitions="*,90,130" ColumnSpacing="12" VerticalAlignment="Center" HorizontalAlignment="Stretch">
-                    <Grid RowDefinitions="Auto,Auto" ClipToBounds="True" HorizontalAlignment="Stretch">
-                      <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                      <TextBlock Grid.Row="1" Text="{Binding Subtitle}" Classes="muted" TextTrimming="CharacterEllipsis" />
+                <Border Classes="row" Cursor="Hand" Opacity="{Binding RowOpacity}" PointerPressed="InstalledModRow_PointerPressed">
+                  <StackPanel>
+                    <Grid ColumnDefinitions="*,90,70,130" ColumnSpacing="12" VerticalAlignment="Center" HorizontalAlignment="Stretch">
+                      <Grid ColumnDefinitions="12,*" RowDefinitions="Auto,Auto" ClipToBounds="True" HorizontalAlignment="Stretch">
+                        <TextBlock Text="{Binding ExpandChevron}" Foreground="#6A604F" FontSize="10" VerticalAlignment="Top" Margin="0,2,0,0" />
+                        <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Subtitle}" Classes="muted" TextTrimming="CharacterEllipsis" />
+                      </Grid>
+                      <TextBlock Grid.Column="1" Text="{Binding Size}" Classes="mono" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="2" Text="{Binding DependencyCount}" Classes="mono" VerticalAlignment="Center" />
+                      <StackPanel Grid.Column="3" Spacing="1">
+                        <TextBlock Text="{Binding VersionCount}" Classes="mono" />
+                        <TextBlock Text="{Binding Versions}" Classes="dim" TextTrimming="CharacterEllipsis" />
+                      </StackPanel>
                     </Grid>
-                    <TextBlock Grid.Column="1" Text="{Binding Size}" Classes="mono" VerticalAlignment="Center" />
-                    <StackPanel Grid.Column="2" Spacing="1">
-                      <TextBlock Text="{Binding VersionCount}" Classes="mono" />
-                      <TextBlock Text="{Binding Versions}" Classes="dim" TextTrimming="CharacterEllipsis" />
+                    <StackPanel IsVisible="{Binding IsExpanded}" Margin="12,8,0,2" Spacing="2">
+                      <TextBlock Text="DEPENDENCIES" Classes="header" Margin="0,0,0,3" />
+                      <ItemsControl ItemsSource="{Binding DependencyItems}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                            <TextBlock Text="{Binding Text}" Foreground="{Binding Foreground}" FontFamily="Consolas, Cascadia Mono, monospace" FontSize="11" />
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                      <TextBlock Text="No dependencies" Classes="dim" IsVisible="{Binding !HasDependencies}" />
+                      <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
+                        <Button Content="{Binding ToggleDisabledLabel}" Command="{Binding ToggleDisabledCommand}" />
+                        <Button Classes="danger" Content="Remove mod…" Command="{Binding DeleteCommand}" IsVisible="{Binding CanRemove}" />
+                      </StackPanel>
                     </StackPanel>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Grid>
+
+        <Grid IsVisible="{Binding IsExploreTabActive}" RowDefinitions="Auto,Auto,Auto,*,Auto">
+
+          <!-- Header: title + status -->
+          <Border Grid.Row="0" BorderBrush="#221D18" BorderThickness="0,0,0,1" Padding="18,14">
+            <StackPanel Spacing="4">
+              <TextBlock Text="Explore Mods" FontSize="18" FontWeight="SemiBold" />
+              <TextBlock Text="{Binding PortalStatusMessage}" Classes="muted" />
+              <TextBlock IsVisible="{Binding MissingPortalCredentials}"
+                         Classes="muted"
+                         Text="Portal credentials not set — go to Settings to add them." />
+            </StackPanel>
+          </Border>
+
+          <!-- Search bar -->
+          <Border Grid.Row="1" BorderBrush="#221D18" BorderThickness="0,0,0,1" Padding="18,10">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+              <TextBox Text="{Binding PortalSearchText, Mode=TwoWay}"
+                       Watermark="Search mods by name…"
+                       IsEnabled="{Binding HasPortalCredentials}"
+                       KeyDown="PortalSearchBox_KeyDown" />
+              <Button Grid.Column="1"
+                      Classes="primary"
+                      Content="Search"
+                      Command="{Binding PortalSearchCommand}" />
+            </Grid>
+          </Border>
+
+          <!-- Column headers -->
+          <Border Grid.Row="2" BorderBrush="#221D18" BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="192,*,80,90,90" Margin="18,7" ColumnSpacing="12">
+              <TextBlock Grid.Column="1" Classes="header" Text="NAME" />
+              <TextBlock Grid.Column="2" Classes="header" Text="DOWNLOADS" />
+              <TextBlock Grid.Column="3" Classes="header" Text="VERSION" />
+              <TextBlock Grid.Column="4" Classes="header" Text="FACTORIO" />
+            </Grid>
+          </Border>
+
+          <!-- Results list -->
+          <ListBox Grid.Row="3" ItemsSource="{Binding PortalMods}" BorderThickness="0" Background="Transparent">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <Border Classes="row" Cursor="Hand" PointerPressed="PortalModRow_PointerPressed">
+                  <Grid ColumnDefinitions="192,*,80,90,90" ColumnSpacing="12" VerticalAlignment="Center" HorizontalAlignment="Stretch">
+                    <!-- Thumbnail with fallback to app icon -->
+                    <Panel Width="180" Height="180" VerticalAlignment="Center">
+                      <Image Source="avares://FactorioModManager.App/Assets/icon.ico"
+                             Width="180" Height="180"
+                             RenderOptions.BitmapInterpolationMode="HighQuality" />
+                      <Image Source="{Binding Thumbnail}"
+                             Width="180" Height="180"
+                             RenderOptions.BitmapInterpolationMode="HighQuality"
+                             IsVisible="{Binding Thumbnail, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    </Panel>
+                    <!-- Name + owner + summary -->
+                    <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                      <TextBlock Text="{Binding Owner}" Classes="muted" />
+                      <TextBlock Text="{Binding Summary}" Classes="dim" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <TextBlock Grid.Column="2" Text="{Binding DownloadsLabel}" Classes="mono" VerticalAlignment="Center" />
+                    <Border Grid.Column="3"
+                            Background="#221D18"
+                            BorderBrush="#3A342C"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Padding="7,0"
+                            Height="24"
+                            MinWidth="66"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center">
+                      <TextBlock Text="{Binding LatestVersion}" Classes="mono" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <TextBlock Grid.Column="4" Text="{Binding FactorioVersion}" Classes="mono" VerticalAlignment="Center" />
                   </Grid>
                 </Border>
               </DataTemplate>
             </ListBox.ItemTemplate>
           </ListBox>
+
+          <!-- Pagination footer -->
+          <Border Grid.Row="4" BorderBrush="#221D18" BorderThickness="0,1,0,0" Padding="18,8">
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="8" VerticalAlignment="Center">
+              <Button Content="← Prev"
+                      Command="{Binding PortalPrevPageCommand}"
+                      IsEnabled="{Binding CanGoPortalPrev}" />
+              <TextBlock Grid.Column="1" Text="{Binding PortalPageLabel}" Classes="muted" VerticalAlignment="Center" Margin="4,0" />
+              <TextBlock Grid.Column="3" Text="{Binding PortalTotalCount, StringFormat='{}{0} total'}" Classes="dim" VerticalAlignment="Center" />
+              <Button Grid.Column="4"
+                      Content="Next →"
+                      Command="{Binding PortalNextPageCommand}"
+                      IsEnabled="{Binding CanGoPortalNext}" />
+            </Grid>
+          </Border>
+
+          <!-- Error message -->
+          <Border Grid.Row="3" Background="#2A1510" BorderBrush="#5A2820" BorderThickness="1" CornerRadius="5"
+                  Padding="10" Margin="18" VerticalAlignment="Top" IsVisible="{Binding HasPortalError}">
+            <TextBlock Text="{Binding PortalErrorMessage}" Foreground="#E89089" TextWrapping="Wrap" />
+          </Border>
+
+          <!-- Mod detail overlay — spans all rows when active -->
+          <Grid Grid.RowSpan="5" IsVisible="{Binding IsPortalDetailActive}" Background="#1A1814" RowDefinitions="Auto,*">
+
+            <!-- Header -->
+            <Border Grid.Row="0" BorderBrush="#221D18" BorderThickness="0,0,0,1" Padding="14,10">
+              <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" VerticalAlignment="Center">
+                <Button Classes="tab" Content="← Back" Command="{Binding BackToPortalListCommand}" />
+                <TextBlock Grid.Column="1" Text="{Binding PortalDetail.Title}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                <Button Grid.Column="2" Content="Install Latest" Command="{Binding StartInstallCommand}"
+                        Classes="primary"
+                        IsVisible="{Binding PortalDetail.CanInstall}" />
+              </Grid>
+            </Border>
+
+            <!-- Loading indicator -->
+            <TextBlock Grid.Row="1" Text="Loading…" Classes="muted"
+                       IsVisible="{Binding IsPortalDetailLoading}"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+
+            <!-- Detail error -->
+            <Border Grid.Row="1" Background="#2A1510" BorderBrush="#5A2820" BorderThickness="1" CornerRadius="5"
+                    Padding="10" Margin="18" VerticalAlignment="Top"
+                    IsVisible="{Binding HasPortalDetailError}">
+              <TextBlock Text="{Binding PortalDetailError}" Foreground="#E89089" TextWrapping="Wrap" />
+            </Border>
+
+            <!-- Content -->
+            <ScrollViewer Grid.Row="1" IsVisible="{Binding PortalDetail, Converter={x:Static ObjectConverters.IsNotNull}}">
+              <Grid ColumnDefinitions="220,*" Margin="18,16" ColumnSpacing="24" VerticalAlignment="Top">
+
+                <!-- Left: thumbnail + meta -->
+                <StackPanel Spacing="12" VerticalAlignment="Top">
+                  <Panel Width="200" Height="200">
+                    <Image Source="avares://FactorioModManager.App/Assets/icon.ico"
+                           Width="200" Height="200"
+                           RenderOptions.BitmapInterpolationMode="HighQuality" />
+                    <Image Source="{Binding PortalDetail.Thumbnail}"
+                           Width="200" Height="200"
+                           RenderOptions.BitmapInterpolationMode="HighQuality"
+                           IsVisible="{Binding PortalDetail.Thumbnail, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                  </Panel>
+                  <StackPanel Spacing="4">
+                    <TextBlock Text="{Binding PortalDetail.Owner}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding PortalDetail.Category}" Classes="muted" />
+                    <TextBlock Text="{Binding PortalDetail.DownloadsLabel}" Classes="muted" />
+                    <TextBlock Text="{Binding PortalDetail.LatestVersion}" Classes="mono" />
+                  </StackPanel>
+
+                  <!-- Releases -->
+                  <StackPanel Spacing="6">
+                    <TextBlock Text="RELEASES" Classes="header" />
+                    <ItemsControl ItemsSource="{Binding PortalDetail.Releases}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                          <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                            <TextBlock Text="{Binding Version}" Classes="mono" />
+                            <TextBlock Grid.Column="1" Text="{Binding InfoJson.FactorioVersion}" Classes="dim" />
+                          </Grid>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </StackPanel>
+
+                <!-- Right: description -->
+                <StackPanel Grid.Column="1" Spacing="10" VerticalAlignment="Top">
+                  <TextBlock Text="{Binding PortalDetail.Summary}" Classes="muted" TextWrapping="Wrap" />
+                  <TextBlock Text="{Binding PortalDetail.Description}"
+                             IsVisible="{Binding PortalDetail.HasDescription}"
+                             TextWrapping="Wrap" />
+                  <TextBlock Text="{Binding PortalDetail.Homepage}"
+                             IsVisible="{Binding PortalDetail.HasHomepage}"
+                             Classes="mono" TextWrapping="Wrap" />
+                  <TextBlock Text="{Binding PortalDetail.SourceUrl}"
+                             IsVisible="{Binding PortalDetail.HasSourceUrl}"
+                             Classes="mono" TextWrapping="Wrap" />
+                </StackPanel>
+
+              </Grid>
+            </ScrollViewer>
+
+            <!-- Install flow overlay -->
+            <Grid Grid.RowSpan="2" IsVisible="{Binding IsInstallFlowActive}" Background="#CC1A1814">
+              <Border Background="#211D18" BorderBrush="#3A3025" BorderThickness="1" CornerRadius="8"
+                      MaxWidth="440" VerticalAlignment="Center" HorizontalAlignment="Center"
+                      Padding="22,20" DataContext="{Binding InstallFlow}">
+                <StackPanel Spacing="14">
+
+                  <TextBlock FontSize="15" FontWeight="SemiBold">
+                    <TextBlock.Text>
+                      <MultiBinding StringFormat="Install &quot;{0}&quot;">
+                        <Binding Path="ModTitle" />
+                      </MultiBinding>
+                    </TextBlock.Text>
+                  </TextBlock>
+                  <TextBlock Classes="muted">
+                    <TextBlock.Text>
+                      <MultiBinding StringFormat="Latest: v{0}">
+                        <Binding Path="Release.Version" />
+                      </MultiBinding>
+                    </TextBlock.Text>
+                  </TextBlock>
+
+                  <!-- Picking state -->
+                  <StackPanel IsVisible="{Binding IsPicking}" Spacing="12">
+                    <TextBlock Text="INSTALL INTO" Classes="header" />
+
+                    <ListBox ItemsSource="{Binding AvailableLists}"
+                             SelectedItem="{Binding SelectedList}"
+                             MaxHeight="180"
+                             Background="#1A1814"
+                             BorderThickness="1"
+                             BorderBrush="#2A2520">
+                      <ListBox.ItemTemplate>
+                        <DataTemplate>
+                          <TextBlock Text="{Binding Name}" Margin="4,2" />
+                        </DataTemplate>
+                      </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <StackPanel Spacing="6">
+                      <Button Content="+ New list" Command="{Binding SelectNewListCommand}" Classes="tab" HorizontalAlignment="Left" />
+                      <TextBox IsVisible="{Binding IsNewList}"
+                               Text="{Binding NewListName}"
+                               Watermark="New list name…" />
+                    </StackPanel>
+
+                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                      <Button Grid.Column="1" Content="Cancel" Command="{Binding CancelCommand}" Classes="tab" />
+                      <Button Grid.Column="2" Content="Install" Command="{Binding ConfirmCommand}" Classes="primary" />
+                    </Grid>
+                  </StackPanel>
+
+                  <!-- Resolving deps state -->
+                  <StackPanel IsVisible="{Binding IsResolvingDeps}" Spacing="14" HorizontalAlignment="Center">
+                    <TextBlock Text="Checking dependencies…" Classes="muted" HorizontalAlignment="Center" />
+                    <ProgressBar IsIndeterminate="True" Height="6" CornerRadius="3" Width="200" />
+                    <Button Content="Cancel" Command="{Binding CancelCommand}" Classes="tab" HorizontalAlignment="Center" />
+                  </StackPanel>
+
+                  <!-- Reviewing deps state -->
+                  <StackPanel IsVisible="{Binding IsReviewingDeps}" Spacing="12">
+                    <TextBlock Text="MODS TO INSTALL" Classes="header" />
+                    <ItemsControl ItemsSource="{Binding AllModsToInstall}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                          <TextBlock Text="{Binding ModName}" Margin="0,2" />
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <StackPanel IsVisible="{Binding HasExpansionDeps}" Spacing="4">
+                      <TextBlock Text="EXPANSION MODS (WILL BE ENABLED)" Classes="header" />
+                      <ItemsControl ItemsSource="{Binding ExpansionDeps}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                            <TextBlock Text="{Binding}" Classes="muted" Margin="0,2" />
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+
+                    <StackPanel IsVisible="{Binding HasAlreadySatisfied}" Spacing="4">
+                      <TextBlock Text="ALREADY INSTALLED" Classes="header" />
+                      <ItemsControl ItemsSource="{Binding AlreadySatisfied}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                            <TextBlock Text="{Binding}" Classes="muted" Margin="0,2" />
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+
+                    <StackPanel IsVisible="{Binding HasIncompatibilities}" Spacing="4">
+                      <TextBlock Text="INCOMPATIBILITIES DETECTED" Classes="header" Foreground="#C06060" />
+                      <ItemsControl ItemsSource="{Binding Incompatibilities}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                            <TextBlock Text="{Binding}" Foreground="#E89089" Margin="0,2" />
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                      <TextBlock Text="These mods conflict with the one being installed. Installing anyway may cause issues."
+                                 Classes="muted" TextWrapping="Wrap" Margin="0,2,0,0" />
+                    </StackPanel>
+
+                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                      <Button Grid.Column="1" Content="Cancel" Command="{Binding CancelCommand}" Classes="tab" />
+                      <Button Grid.Column="2" Content="Install" Command="{Binding ProceedCommand}" Classes="primary" />
+                    </Grid>
+                  </StackPanel>
+
+                  <!-- Downloading state -->
+                  <StackPanel IsVisible="{Binding IsDownloading}" Spacing="14">
+                    <TextBlock Text="{Binding CurrentDownloadLabel}" Classes="muted" HorizontalAlignment="Center" />
+                    <ProgressBar Value="{Binding Progress}" Minimum="0" Maximum="1" Height="6" CornerRadius="3" />
+                    <Button Content="Cancel" Command="{Binding CancelCommand}" Classes="tab" HorizontalAlignment="Center" />
+                  </StackPanel>
+
+                  <!-- Done state -->
+                  <StackPanel IsVisible="{Binding IsDone}" Spacing="14" HorizontalAlignment="Center">
+                    <TextBlock Text="Installed successfully" FontWeight="SemiBold" Foreground="#5FA84A" HorizontalAlignment="Center" />
+                    <Button Content="Close" Command="{Binding CancelCommand}" Classes="tab" HorizontalAlignment="Center" />
+                  </StackPanel>
+
+                  <!-- Error state -->
+                  <StackPanel IsVisible="{Binding IsError}" Spacing="12">
+                    <TextBlock Text="Install failed" FontWeight="SemiBold" Foreground="#E89089" />
+                    <TextBlock Text="{Binding ErrorMessage}" Classes="muted" TextWrapping="Wrap" />
+                    <Button Content="Close" Command="{Binding CancelCommand}" Classes="tab" HorizontalAlignment="Left" />
+                  </StackPanel>
+
+                </StackPanel>
+              </Border>
+            </Grid>
+
+          </Grid>
+        </Grid>
+
+        <!-- Settings tab -->
+        <Grid IsVisible="{Binding IsSettingsTabActive}" RowDefinitions="Auto,*">
+          <Border Grid.Row="0" BorderBrush="#221D18" BorderThickness="0,0,0,1" Padding="18,14">
+            <TextBlock Text="Settings" FontSize="18" FontWeight="SemiBold" />
+          </Border>
+          <ScrollViewer Grid.Row="1">
+            <StackPanel Margin="18,16" Spacing="20">
+
+              <!-- Portal credentials -->
+              <StackPanel Spacing="10">
+                <TextBlock Text="MODS FOLDER" Classes="header" />
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                  <TextBox Text="{Binding ModsFolderPath, Mode=OneWay}"
+                           IsReadOnly="True"
+                           Watermark="No mods folder selected"
+                           FontFamily="Consolas, Cascadia Mono, monospace"
+                           FontSize="11" />
+                  <Button Grid.Column="1" Content="Browse…" Command="{Binding BrowseFolderCommand}" />
+                </Grid>
+              </StackPanel>
+
+              <!-- Factorio installation -->
+              <StackPanel Spacing="10">
+                <TextBlock Text="FACTORIO INSTALLATION" Classes="header" />
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                  <TextBox Text="{Binding FactorioInstallFolderPath, Mode=OneWay}"
+                           IsReadOnly="True"
+                           Watermark="No installation folder selected"
+                           FontFamily="Consolas, Cascadia Mono, monospace"
+                           FontSize="11" />
+                  <Button Grid.Column="1" Content="Browse…" Command="{Binding BrowseInstallFolderCommand}" />
+                </Grid>
+              </StackPanel>
+
+              <!-- Portal credentials -->
+              <StackPanel Spacing="10">
+                <TextBlock Text="MOD PORTAL CREDENTIALS" Classes="header" />
+                <TextBlock Classes="muted" TextWrapping="Wrap"
+                           Text="Required to browse and search the Factorio mod portal (mods.factorio.com). Your token is available on your profile page." />
+                <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto" RowSpacing="8" ColumnSpacing="10">
+                  <TextBlock Text="Username" VerticalAlignment="Center" />
+                  <TextBox Grid.Column="1"
+                           Text="{Binding PortalUsernameEntry, Mode=TwoWay}"
+                           Watermark="factorio.com username" />
+                  <TextBlock Grid.Row="1" Text="Token" VerticalAlignment="Center" />
+                  <TextBox Grid.Row="1" Grid.Column="1"
+                           Text="{Binding PortalTokenEntry, Mode=TwoWay}"
+                           Watermark="API token"
+                           PasswordChar="•" />
+                </Grid>
+                <Button Classes="primary" Content="Save" Command="{Binding SavePortalCredentialsCommand}" HorizontalAlignment="Left" />
+              </StackPanel>
+
+            </StackPanel>
+          </ScrollViewer>
         </Grid>
 
         <Border Background="#2A1510" BorderBrush="#5A2820" BorderThickness="1" CornerRadius="5" Padding="10" Margin="18" VerticalAlignment="Bottom" IsVisible="{Binding HasError}">

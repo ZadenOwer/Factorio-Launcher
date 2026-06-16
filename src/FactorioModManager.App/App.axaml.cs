@@ -42,7 +42,8 @@ public sealed partial class App : Application
                 new ModListActivator(new BackupService()),
                 new ModListFileManager(),
                 new NameValidator(),
-                new ActiveModListDetector());
+                new ModPortalService(),
+                new ModDownloadService());
 
             window.DataContext = viewModel;
             window.Opened += async (_, _) => await viewModel.InitializeAsync();

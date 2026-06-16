@@ -38,11 +38,13 @@ public sealed class ModListDetector
     private ModList CreateModList(string folder)
     {
         var metadata = _metadataService.Load(folder);
+        var (selected, disabled) = _reader.ReadModStates(folder);
         return new ModList
         {
             Name = Path.GetFileName(folder),
             FolderPath = folder,
-            SelectedMods = _reader.ReadSelectedMods(folder),
+            SelectedMods = selected,
+            DisabledMods = disabled,
             Description = metadata.Description,
             SelectedVersions = new Dictionary<string, string>(metadata.SelectedVersions, StringComparer.OrdinalIgnoreCase),
             CreatedUtc = metadata.CreatedUtc,

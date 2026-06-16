@@ -351,7 +351,7 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
-    public async Task InitializeAsync_imports_root_files_into_remembered_active_list_when_root_files_no_longer_match()
+    public async Task InitializeAsync_restores_remembered_active_list_without_mismatch_check()
     {
         using var temp = new TempDirectory();
         var rememberedFolder = CreateManagedList(temp.Path, "Remembered", "Remembered active list");
@@ -366,50 +366,42 @@ public sealed class MainWindowViewModelTests
             ActiveModListFolderPath = rememberedFolder
         });
         var dialogs = new TestDialogService();
-        dialogs.ConfirmResponses.Enqueue(true);
         var viewModel = CreateViewModel(dialogs, appSettingsService);
 
         await viewModel.InitializeAsync();
 
         Assert.Equal("Remembered", viewModel.ActiveListName);
         Assert.True(viewModel.ModLists.Single(list => list.Name == "Remembered").IsActive);
-        Assert.Equal([9, 9, 9], File.ReadAllBytes(Path.Combine(rememberedFolder, FactorioFileNames.ModSettingsDat)));
-        Assert.Empty(new ModListReader().ReadSelectedMods(rememberedFolder));
-        Assert.Contains(dialogs.ConfirmCalls, call => call.Title == "Active list changed" && call.ConfirmText == "Import");
+        Assert.Empty(dialogs.ConfirmCalls);
         var settings = await appSettingsService.LoadAsync();
         Assert.Equal(rememberedFolder, settings.ActiveModListFolderPath);
     }
 
     [Fact]
-    public async Task InitializeAsync_clears_remembered_active_list_when_import_prompt_is_cancelled()
+    public async Task InitializeAsync_clears_remembered_active_list_when_folder_not_found()
     {
         using var temp = new TempDirectory();
-        var rememberedFolder = CreateManagedList(temp.Path, "Remembered", "Remembered active list");
         File.WriteAllText(Path.Combine(temp.Path, FactorioFileNames.ModListJson), """{"mods":[{"name":"base","enabled":true}]}""");
         File.WriteAllBytes(Path.Combine(temp.Path, FactorioFileNames.ModSettingsDat), [9, 9, 9]);
+        var nonExistentFolder = ManagerWorkspacePaths.GetManagedListFolder(temp.Path, "Deleted");
 
         var settingsPath = Path.Combine(temp.Path, "settings.json");
         var appSettingsService = new AppSettingsService(settingsPath);
         await appSettingsService.SaveAsync(new AppSettings
         {
             LastModsFolderPath = temp.Path,
-            ActiveModListFolderPath = rememberedFolder
+            ActiveModListFolderPath = nonExistentFolder
         });
-        var dialogs = new TestDialogService();
-        dialogs.ConfirmResponses.Enqueue(false);
-        var viewModel = CreateViewModel(dialogs, appSettingsService);
+        var viewModel = CreateViewModel(new TestDialogService(), appSettingsService);
 
         await viewModel.InitializeAsync();
 
         Assert.False(viewModel.HasActiveList);
-        Assert.All(viewModel.ModLists, list => Assert.False(list.IsActive));
-        Assert.Contains(dialogs.ConfirmCalls, call => call.Title == "Active list changed" && call.ConfirmText == "Import");
-        var settings = await appSettingsService.LoadAsync();
-        Assert.Null(settings.ActiveModListFolderPath);
+        Assert.Empty(viewModel.ModLists);
     }
 
     [Fact]
-    public async Task RefreshCommand_imports_root_files_into_invalid_remembered_active_list()
+    public async Task RefreshCommand_retains_active_state_after_root_files_change()
     {
         using var temp = new TempDirectory();
         var rememberedFolder = CreateManagedList(temp.Path, "Remembered", "Remembered active list");
@@ -428,18 +420,16 @@ public sealed class MainWindowViewModelTests
         await viewModel.InitializeAsync();
         File.WriteAllText(Path.Combine(temp.Path, FactorioFileNames.ModListJson), """{"mods":[{"name":"base","enabled":true},{"name":"manual-mod","enabled":true}]}""");
         File.WriteAllBytes(Path.Combine(temp.Path, FactorioFileNames.ModSettingsDat), [7, 7, 7]);
-        dialogs.ConfirmResponses.Enqueue(true);
 
         await viewModel.RefreshCommand.ExecuteAsync();
 
         Assert.Equal("Remembered", viewModel.ActiveListName);
-        Assert.Equal([7, 7, 7], File.ReadAllBytes(Path.Combine(rememberedFolder, FactorioFileNames.ModSettingsDat)));
-        Assert.Equal(["manual-mod"], new ModListReader().ReadSelectedMods(rememberedFolder));
-        Assert.Contains(dialogs.ConfirmCalls, call => call.Title == "Active list changed" && call.ConfirmText == "Import");
+        Assert.True(viewModel.ModLists.Single(list => list.Name == "Remembered").IsActive);
+        Assert.Empty(dialogs.ConfirmCalls);
     }
 
     [Fact]
-    public async Task PollFactorioRunningStateAsync_imports_root_files_after_factorio_closes()
+    public async Task PollFactorioRunningStateAsync_retains_active_state_after_factorio_closes()
     {
         using var temp = new TempDirectory();
         var rememberedFolder = CreateManagedList(temp.Path, "Remembered", "Remembered active list");
@@ -459,24 +449,21 @@ public sealed class MainWindowViewModelTests
         await viewModel.InitializeAsync();
         Assert.True(viewModel.IsFactorioRunning);
 
-        File.WriteAllText(Path.Combine(temp.Path, FactorioFileNames.ModListJson), """{"mods":[{"name":"base","enabled":true},{"name":"closed-mod","enabled":true}]}""");
-        File.WriteAllBytes(Path.Combine(temp.Path, FactorioFileNames.ModSettingsDat), [6, 6, 6]);
-        dialogs.ConfirmResponses.Enqueue(true);
         gameStateDetector.IsRunningResult = false;
 
         await viewModel.PollFactorioRunningStateAsync();
 
         Assert.False(viewModel.IsFactorioRunning);
         Assert.Equal("Remembered", viewModel.ActiveListName);
-        Assert.Equal([6, 6, 6], File.ReadAllBytes(Path.Combine(rememberedFolder, FactorioFileNames.ModSettingsDat)));
-        Assert.Equal(["closed-mod"], new ModListReader().ReadSelectedMods(rememberedFolder));
+        Assert.True(viewModel.ModLists.Single(list => list.Name == "Remembered").IsActive);
+        Assert.Empty(dialogs.ConfirmCalls);
     }
 
     [Fact]
     public async Task Activating_mod_list_remembers_it_as_active()
     {
         using var temp = new TempDirectory();
-        File.WriteAllText(Path.Combine(temp.Path, FactorioFileNames.ModListJson), "old-root-list");
+        File.WriteAllText(Path.Combine(temp.Path, FactorioFileNames.ModListJson), """{"mods":[{"name":"base","enabled":true}]}""");
         File.WriteAllBytes(Path.Combine(temp.Path, FactorioFileNames.ModSettingsDat), [0]);
         var activeFolder = CreateManagedList(temp.Path, "Pack", "Pack description");
 
@@ -500,7 +487,7 @@ public sealed class MainWindowViewModelTests
     {
         using var modsTemp = new TempDirectory();
         using var installTemp = new TempDirectory();
-        File.WriteAllText(Path.Combine(modsTemp.Path, FactorioFileNames.ModListJson), "old-root-list");
+        File.WriteAllText(Path.Combine(modsTemp.Path, FactorioFileNames.ModListJson), """{"mods":[{"name":"base","enabled":true}]}""");
         File.WriteAllBytes(Path.Combine(modsTemp.Path, FactorioFileNames.ModSettingsDat), [0]);
         CreateManagedList(modsTemp.Path, "Pack", "Pack description");
         Directory.CreateDirectory(Path.Combine(installTemp.Path, "data"));
@@ -627,7 +614,7 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
-    public async Task RefreshCommand_rescans_disk_and_revalidates_active_state()
+    public async Task RefreshCommand_rescans_disk_and_discovers_new_lists()
     {
         using var temp = new TempDirectory();
         var activeFolder = CreateManagedList(temp.Path, "ActivePack", "Initially active");
@@ -648,19 +635,14 @@ public sealed class MainWindowViewModelTests
         Assert.Equal("ActivePack", viewModel.ActiveListName);
 
         CreateManagedList(temp.Path, "ManualPack", "Created outside the app");
-        File.WriteAllText(Path.Combine(temp.Path, FactorioFileNames.ModListJson), """{"mods":[{"name":"base","enabled":true}]}""");
-        File.WriteAllBytes(Path.Combine(temp.Path, FactorioFileNames.ModSettingsDat), [7, 7, 7]);
-        dialogs.ConfirmResponses.Enqueue(false);
 
         await viewModel.RefreshCommand.ExecuteAsync();
 
         Assert.Equal(2, viewModel.ModLists.Count);
         Assert.Contains(viewModel.ModLists, list => list.Name == "ManualPack");
-        Assert.False(viewModel.HasActiveList);
-        Assert.All(viewModel.ModLists, list => Assert.False(list.IsActive));
-        Assert.Contains(dialogs.ConfirmCalls, call => call.Title == "Active list changed" && call.ConfirmText == "Import");
-        var settings = await appSettingsService.LoadAsync();
-        Assert.Null(settings.ActiveModListFolderPath);
+        Assert.Equal("ActivePack", viewModel.ActiveListName);
+        Assert.True(viewModel.ModLists.Single(list => list.Name == "ActivePack").IsActive);
+        Assert.Empty(dialogs.ConfirmCalls);
     }
 
     [Fact]
@@ -889,7 +871,8 @@ public sealed class MainWindowViewModelTests
             new ModListActivator(new BackupService()),
             new ModListFileManager(),
             new NameValidator(),
-            new ActiveModListDetector());
+            new ModPortalService(),
+            new ModDownloadService());
     }
 
     private sealed class FakeFactorioGameLauncher : IFactorioGameLauncher
