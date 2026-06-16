@@ -23,6 +23,7 @@ public sealed class EditableModViewModel : ViewModelBase
         _selectedVersion = string.IsNullOrWhiteSpace(selectedVersion)
             ? AvailableVersions.FirstOrDefault() ?? "-"
             : selectedVersion;
+        DependencyItems = DependencyDisplayItem.ParseAll(modInfo.Dependencies);
     }
 
     public string Name { get; }
@@ -61,7 +62,22 @@ public sealed class EditableModViewModel : ViewModelBase
         }
     }
 
+    public IReadOnlyList<DependencyDisplayItem> DependencyItems { get; }
+    public bool HasDependencies => DependencyItems.Count > 0;
     public string RowBackground => IsSelected ? "#241D16" : "#1A1814";
+
+    private bool _isExpanded;
+    public bool IsExpanded
+    {
+        get => _isExpanded;
+        set
+        {
+            if (SetProperty(ref _isExpanded, value))
+                OnPropertyChanged(nameof(ExpandChevron));
+        }
+    }
+
+    public string ExpandChevron => IsExpanded ? "▾" : "▸";
 
     public string SelectedVersion
     {
