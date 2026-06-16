@@ -1,8 +1,10 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
+using Avalonia.VisualTree;
 using FactorioModManager.App.ViewModels;
 
 namespace FactorioModManager.App.Views;
@@ -34,6 +36,56 @@ public sealed partial class MainWindow : Window
             ModListsBox_PointerCaptureLost,
             RoutingStrategies.Bubble,
             handledEventsToo: true);
+    }
+
+    private void InstalledModRow_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is Control control &&
+            control.DataContext is InstalledModViewModel vm &&
+            e.GetCurrentPoint(control).Properties.IsLeftButtonPressed)
+        {
+            vm.IsExpanded = !vm.IsExpanded;
+        }
+    }
+
+    private void PortalSearchBox_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter && DataContext is MainWindowViewModel vm)
+            _ = vm.PortalSearchCommand.ExecuteAsync();
+    }
+
+    private void PortalModRow_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.GetCurrentPoint(sender as Control).Properties.IsLeftButtonPressed &&
+            (sender as Control)?.DataContext is PortalModViewModel mod &&
+            DataContext is MainWindowViewModel vm)
+        {
+            _ = vm.LoadPortalModDetailAsync(mod.Name);
+        }
+    }
+
+
+    private void SelectedModRow_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is Control control &&
+            control.DataContext is DisplayModViewModel vm &&
+            e.GetCurrentPoint(control).Properties.IsLeftButtonPressed)
+        {
+            vm.IsExpanded = !vm.IsExpanded;
+        }
+    }
+
+    private void EditableModRow_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is Control control &&
+            control.DataContext is EditableModViewModel vm &&
+            e.GetCurrentPoint(control).Properties.IsLeftButtonPressed &&
+            e.Source is Visual source &&
+            !source.GetSelfAndVisualAncestors().OfType<ToggleButton>().Any() &&
+            !source.GetSelfAndVisualAncestors().OfType<ComboBox>().Any())
+        {
+            vm.IsExpanded = !vm.IsExpanded;
+        }
     }
 
     private void ModListItem_PointerPressed(object? sender, PointerPressedEventArgs e)
