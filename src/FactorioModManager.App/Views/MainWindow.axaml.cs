@@ -60,6 +60,7 @@ public sealed partial class MainWindow : Window
             (sender as Control)?.DataContext is PortalModViewModel mod &&
             DataContext is MainWindowViewModel vm)
         {
+            PortalDetailScrollViewer.Offset = Vector.Zero;
             _ = vm.LoadPortalModDetailAsync(mod.Name);
         }
     }

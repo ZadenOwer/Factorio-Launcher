@@ -824,7 +824,7 @@
             </Border>
 
             <!-- Content -->
-            <ScrollViewer Grid.Row="1" IsVisible="{Binding PortalDetail, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <ScrollViewer Name="PortalDetailScrollViewer" Grid.Row="1" IsVisible="{Binding PortalDetail, Converter={x:Static ObjectConverters.IsNotNull}}">
               <Grid ColumnDefinitions="220,*" Margin="18,16" ColumnSpacing="24" VerticalAlignment="Top">
 
                 <!-- Left: thumbnail + meta -->
@@ -939,49 +939,53 @@
 
                   <!-- Reviewing deps state -->
                   <StackPanel IsVisible="{Binding IsReviewingDeps}" Spacing="12">
-                    <TextBlock Text="MODS TO INSTALL" Classes="header" />
-                    <ItemsControl ItemsSource="{Binding AllModsToInstall}">
-                      <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                          <TextBlock Text="{Binding ModName}" Margin="0,2" />
-                        </DataTemplate>
-                      </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                    <ScrollViewer MaxHeight="320" VerticalScrollBarVisibility="Auto">
+                      <StackPanel Spacing="12">
+                        <TextBlock Text="MODS TO INSTALL" Classes="header" />
+                        <ItemsControl ItemsSource="{Binding AllModsToInstall}">
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                              <TextBlock Text="{Binding ModName}" Margin="0,2" />
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
 
-                    <StackPanel IsVisible="{Binding HasExpansionDeps}" Spacing="4">
-                      <TextBlock Text="EXPANSION MODS (WILL BE ENABLED)" Classes="header" />
-                      <ItemsControl ItemsSource="{Binding ExpansionDeps}">
-                        <ItemsControl.ItemTemplate>
-                          <DataTemplate>
-                            <TextBlock Text="{Binding}" Classes="muted" Margin="0,2" />
-                          </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                      </ItemsControl>
-                    </StackPanel>
+                        <StackPanel IsVisible="{Binding HasExpansionDeps}" Spacing="4">
+                          <TextBlock Text="EXPANSION MODS (WILL BE ENABLED)" Classes="header" />
+                          <ItemsControl ItemsSource="{Binding ExpansionDeps}">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate>
+                                <TextBlock Text="{Binding}" Classes="muted" Margin="0,2" />
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </StackPanel>
 
-                    <StackPanel IsVisible="{Binding HasAlreadySatisfied}" Spacing="4">
-                      <TextBlock Text="ALREADY INSTALLED" Classes="header" />
-                      <ItemsControl ItemsSource="{Binding AlreadySatisfied}">
-                        <ItemsControl.ItemTemplate>
-                          <DataTemplate>
-                            <TextBlock Text="{Binding}" Classes="muted" Margin="0,2" />
-                          </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                      </ItemsControl>
-                    </StackPanel>
+                        <StackPanel IsVisible="{Binding HasAlreadySatisfied}" Spacing="4">
+                          <TextBlock Text="ALREADY INSTALLED" Classes="header" />
+                          <ItemsControl ItemsSource="{Binding AlreadySatisfied}">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate>
+                                <TextBlock Text="{Binding}" Classes="muted" Margin="0,2" />
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </StackPanel>
 
-                    <StackPanel IsVisible="{Binding HasIncompatibilities}" Spacing="4">
-                      <TextBlock Text="INCOMPATIBILITIES DETECTED" Classes="header" Foreground="#C06060" />
-                      <ItemsControl ItemsSource="{Binding Incompatibilities}">
-                        <ItemsControl.ItemTemplate>
-                          <DataTemplate>
-                            <TextBlock Text="{Binding}" Foreground="#E89089" Margin="0,2" />
-                          </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                      </ItemsControl>
-                      <TextBlock Text="These mods conflict with the one being installed. Installing anyway may cause issues."
-                                 Classes="muted" TextWrapping="Wrap" Margin="0,2,0,0" />
-                    </StackPanel>
+                        <StackPanel IsVisible="{Binding HasIncompatibilities}" Spacing="4">
+                          <TextBlock Text="INCOMPATIBLE MODS" Classes="header" Foreground="#C06060" />
+                          <ItemsControl ItemsSource="{Binding Incompatibilities}">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate>
+                                <TextBlock Text="{Binding}" Foreground="#E89089" Margin="0,2" />
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                          <TextBlock Text="Installing anyway may cause issues if any of these are present in your mod setup."
+                                     Classes="muted" TextWrapping="Wrap" Margin="0,2,0,0" />
+                        </StackPanel>
+                      </StackPanel>
+                    </ScrollViewer>
 
                     <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
                       <Button Grid.Column="1" Content="Cancel" Command="{Binding CancelCommand}" Classes="tab" />
